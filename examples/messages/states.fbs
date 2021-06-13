@@ -1,0 +1,16 @@
+struct Vec3{
+    x:float ;
+    y:float;
+    z:float;   
+}
+
+table Agent {
+    position:Vec3;
+    id:int;    
+}
+
+table Swarm {
+    agents:[Agent];
+}
+
+root_type Swarm;
