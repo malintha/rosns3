@@ -2,42 +2,60 @@
 #include "ns3/constant-position-mobility-model.h"
 #include "ns3/yans-wifi-helper.h"
 #include "ns3/aodv-module.h"
+#include "ns3/nstime.h"
 
 NS_LOG_COMPONENT_DEFINE ("ROSNS3Model");
 
-CoModel::CoModel(std::vector<mobile_node_t> mobile_nodes, int sim_time):
-                            mobile_nodes(mobile_nodes),sim_time(sim_time) {
+CoModel::CoModel(std::vector<mobile_node_t> mobile_nodes, int sim_time, bool use_real_time):
+                mobile_nodes(mobile_nodes),sim_time(sim_time), use_real_time(use_real_time) {
     pcap = true;
     print_routes = false;
     n_nodes = mobile_nodes.size();
 
+    if (use_real_time) {
+        GlobalValue::Bind ("SimulatorImplementationType", StringValue (
+                            "ns3::RealtimeSimulatorImpl"));
+    }
     create_nodes();
+    create_mobility_model();
     create_devices();
     install_inet_stack();
     install_applications();
 };
 
 void CoModel::run() {
-    NS_LOG_DEBUG("Starting simulation.");
-    Simulator::Stop (Seconds (sim_time));
-    Simulator::Run ();
-    Simulator::Destroy ();
-    NS_LOG_DEBUG("Finished simulation.");
-
-};
-
-void CoModel::report(std::ostream &) {
-
-};
-
-void CoModel::create_nodes() {
-    node_container.Create(n_nodes);
-    for (uint32_t i = 0;i<n_nodes;i++) {
-        std::ostringstream os;
-        os << "node-" << i+1;
-        Names::Add (os.str (), node_container.Get (i));
+    auto simulator_t = [this]() {
+        Simulator::Stop (Seconds (sim_time));        
+        Simulator::Run ();
+        NS_LOG_DEBUG("Finished simulation.");
+        report(std::cout);
+        // Simulator::Destroy();
+    };
+    if(use_real_time) {
+        NS_LOG_DEBUG("Simulation started in a new thread.");
+        this->simulator = new std::thread(simulator_t);
     }
+    else {
+        NS_LOG_DEBUG("Simulation started.");
+        simulator_t();
+    }
+};
 
+void CoModel::update_mobility_model(std::vector<mobile_node_t> mobile_nodes) {
+    this->mobile_nodes = mobile_nodes;
+    for (uint32_t i = 0; i<n_nodes;i++) {
+        Ptr<Node> node = node_container.Get (i);
+        Ptr<MobilityModel> mob = node->GetObject<MobilityModel> ();
+        mob->SetPosition(mobile_nodes[i].position);
+    }
+    NS_LOG_DEBUG("Simulating with the updated the mobility model.");
+    
+    if (!use_real_time) {
+        run();
+    }
+};
+
+void CoModel::create_mobility_model() {
     // add constant mobility model
     Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator>();
     for (uint32_t i = 0;i<n_nodes;i++) {
@@ -48,6 +66,17 @@ void CoModel::create_nodes() {
     mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
     mobility.Install (node_container);
     NS_LOG_DEBUG("Created " << n_nodes << " nodes.");
+};
+
+void CoModel::report(std::ostream &) {};
+
+void CoModel::create_nodes() {
+    node_container.Create(n_nodes);
+    for (uint32_t i = 0;i<n_nodes;i++) {
+        std::ostringstream os;
+        os << "node-" << i+1;
+        Names::Add (os.str (), node_container.Get (i));
+    }
 };
 
 void CoModel::create_devices() {
@@ -87,15 +116,17 @@ void CoModel::create_devices() {
 void CoModel::install_applications() {
     V4PingHelper ping (interfaces.GetAddress (n_nodes - 1));
     ping.SetAttribute ("Verbose", BooleanValue (true));
+    const Time t = Seconds(1);
+    ping.SetAttribute ("Interval", TimeValue(t));
 
     ApplicationContainer p = ping.Install (node_container.Get (0));
+    ApplicationContainer p1 = ping.Install (node_container.Get (1));
+
     p.Start (Seconds (0));
     p.Stop (Seconds (sim_time) - Seconds (0.001));
 
-    // move node away
-    // Ptr<Node> node = node_container.Get (n_nodes/2);
-    // Ptr<MobilityModel> mob = node->GetObject<MobilityModel> ();
-    // Simulator::Schedule (Seconds (totalTime/3), &MobilityModel::SetPosition, mob, Vector (1e5, 1e5, 1e5));
+    p1.Start (Seconds (0));
+    p1.Stop (Seconds (sim_time) - Seconds (0.001));
     NS_LOG_DEBUG("Installed ping applications.");
 
 };

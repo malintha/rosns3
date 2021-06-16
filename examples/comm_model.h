@@ -11,11 +11,12 @@ using namespace ns3;
 
 class CoModel {
     public:
-        CoModel(std::vector<mobile_node_t> mobile_nodes, int sim_time);
+        CoModel(std::vector<mobile_node_t> mobile_nodes, int sim_time, bool use_real_time);
         void run();
         std::vector<mobile_node_t> mobile_nodes;
         void report(std::ostream &);
-        
+        void update_mobility_model(std::vector<mobile_node_t> mobile_nodes);
+
     private:
         uint32_t n_nodes;
         NodeContainer node_container;
@@ -24,10 +25,11 @@ class CoModel {
         MobilityHelper mobility;
         bool pcap, print_routes;
         int sim_time;
+        bool use_real_time;
         void create_nodes();
         void create_devices();
         void install_applications();
         void install_inet_stack();
-
-
+        void create_mobility_model();
+        std::thread* simulator;
 };

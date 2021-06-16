@@ -10,14 +10,15 @@ int main (int argc, char *argv[])
   NS_LOG_COMPONENT_DEFINE ("ROSNS3Example");
 
   ROSNS3Server server(28500);
-  
+  bool use_real_time = false;
+  bool sim_start = false;
   server.start();
-  while(server.get_server_status()) {
+  CoModel* model;
 
+  while(server.get_server_status()) {
     if(server.data_ready()) {
-    
       recvdata_t data = server.get_data();
-      
+      int sim_time = 10;
       ssize_t n_bytes = data.n_bytes;
       char* buffer = data.buffer;
       char agent_data[n_bytes];
@@ -36,11 +37,15 @@ int main (int argc, char *argv[])
         mobile_nodes.push_back(node);
       }
 
-      // create the comm model
-      CoModel model(mobile_nodes, 10);
-      model.run();
-      model.report(std::cout);
-
+      // create the comm model and let the simulation run
+      if (!sim_start) {
+        model = new CoModel(mobile_nodes, sim_time, use_real_time);
+        model->run();
+        sim_start = true;
+      } 
+      else {
+        model->update_mobility_model(mobile_nodes);
+      }
     }
 
     else {
