@@ -1,23 +1,32 @@
-/* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 #ifndef ROSNS3_HELPER_H
 #define ROSNS3_HELPER_H
 
-#include "ns3/rosns3.h"
+#include "ns3/core-module.h"
+// #include "ns3/rosns3.h"
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <iostream>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <thread>
-#include <future>
+#include <list>
+#include <algorithm>
 
 #define BUFFER_LENGTH 1024
 
 namespace ns3 {
-struct recvdata_t {
+
+typedef struct recvdata_t {
     char* buffer;
     ssize_t n_bytes;
-};
+    uint timestamp;
+} recvdata_t;
+
+typedef struct mobile_node_t {
+    Vector position;
+    int id;
+} mobile_node_t;
+
 class ROSNS3Server {
     public:
         ROSNS3Server(int port);
@@ -25,7 +34,9 @@ class ROSNS3Server {
         bool start();
         bool kill();
         bool get_server_status();
+        bool data_ready();
         recvdata_t get_data();
+        std::list<recvdata_t> fifo_list;
 
     private:
         char buffer[BUFFER_LENGTH];
