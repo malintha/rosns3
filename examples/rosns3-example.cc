@@ -5,6 +5,10 @@
 
 using namespace ns3;
 
+// commands:
+// NS_LOG="ROSNS3Server:ROSNS3Example:ROSNS3Model" ./waf --run rosns3-example
+// ./client
+
 int main (int argc, char *argv[])
 {
   NS_LOG_COMPONENT_DEFINE ("ROSNS3Example");
@@ -40,6 +44,8 @@ int main (int argc, char *argv[])
       // create the comm model and let the simulation run
       if (!sim_start) {
         model = new CoModel(mobile_nodes, sim_time, use_real_time);
+        NS_LOG_INFO("Created CoModel");            
+
         model->run();
         sim_start = true;
       } 

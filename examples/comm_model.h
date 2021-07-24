@@ -6,8 +6,10 @@
 #include "ns3/point-to-point-module.h"
 #include "ns3/mobility-module.h"
 #include "ns3/v4ping-helper.h"
+#include <eigen3/Eigen/Dense>
 
 using namespace ns3;
+using namespace Eigen;
 
 class CoModel {
     public:
@@ -19,17 +21,25 @@ class CoModel {
 
     private:
         uint32_t n_nodes;
-        NodeContainer node_container;
+        NodeContainer backbone;
+        NodeContainer stas;
+        
         NetDeviceContainer devices;
+
         Ipv4InterfaceContainer interfaces;
+        Ipv4InterfaceContainer interfaces_stas;
+
         MobilityHelper mobility;
         bool pcap, print_routes;
         int sim_time;
         bool use_real_time;
-        void create_nodes();
-        void create_devices();
-        void install_applications();
+        void create_backbone_nodes();
+        void create_backbone_devices();
+        void install_applications(unsigned int n_ues);
         void install_inet_stack();
         void create_mobility_model();
         std::thread* simulator;
+        std::vector<mobile_node_t> sample_ue(Vector2d roi_means, Vector2d roi_vars);
+        void create_sta_nodes(std::vector<mobile_node_t> ue_nodes);
+        void create_ap_devices();
 };
