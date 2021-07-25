@@ -7,6 +7,7 @@
 #include "ns3/mobility-module.h"
 #include "ns3/v4ping-helper.h"
 #include <eigen3/Eigen/Dense>
+// #include "ns3/udp-echo-helper.h"
 
 using namespace ns3;
 using namespace Eigen;
@@ -23,11 +24,12 @@ class CoModel {
         uint32_t n_nodes;
         NodeContainer backbone;
         NodeContainer stas;
-        
+        NodeContainer aps;
         NetDeviceContainer devices;
 
-        Ipv4InterfaceContainer interfaces;
-        Ipv4InterfaceContainer interfaces_stas;
+        Ipv4InterfaceContainer interfaces_bb;
+        Ipv4InterfaceContainer interfaces_sta;
+        Ipv4InterfaceContainer interfaces_ap;
 
         MobilityHelper mobility;
         bool pcap, print_routes;
