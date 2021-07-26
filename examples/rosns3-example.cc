@@ -11,6 +11,9 @@ using namespace ns3;
 
 int main (int argc, char *argv[])
 {
+  CommandLine cmd;
+  cmd.Parse (argc, argv);
+  
   NS_LOG_COMPONENT_DEFINE ("ROSNS3Example");
 
   ROSNS3Server server(28500);
@@ -54,9 +57,9 @@ int main (int argc, char *argv[])
       }
     }
 
-    else {
-      NS_LOG_INFO("Waiting for data...");            
-    }
+    // else {
+    //   NS_LOG_INFO("Waiting for data...");            
+    // }
     sleep(1);
 
   }

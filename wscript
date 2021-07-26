@@ -7,7 +7,7 @@
     # conf.check_nonfatal(header_name='stdint.h', define_name='HAVE_STDINT_H')
 
 def build(bld):
-    module = bld.create_ns3_module('rosns3', ['aodv','mobility','core','network'])
+    module = bld.create_ns3_module('rosns3', ['aodv','mobility','core','network','visualizer','olsr','applications'])
     module.includes = '/home/malintha/Desktop/fb/flatbuffers/include'
     module.source = [
         'model/rosns3.cc',

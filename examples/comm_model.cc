@@ -7,15 +7,12 @@
 #include <fstream>
 #include <string>
 #include "ns3/applications-module.h"
+#include "ns3/olsr-helper.h"
+#include "ns3/on-off-helper.h"
 
 // #include "ns3/udp-echo-helper.h"
 
 #include <random>
-// #include "ns3/udp-echo-client.h"
-// #include "ns3/udp-echo-server.h"
-
-
-// #include "ns3/sta-wifi-mac.h"
 
 NS_LOG_COMPONENT_DEFINE ("ROSNS3Model");
 
@@ -34,7 +31,7 @@ CoModel::CoModel(std::vector<mobile_node_t> mobile_nodes, int sim_time, bool use
     Vector2d roi_vars(5,15);
 
     std::vector<mobile_node_t> ue_nodes = sample_ue(roi_means, roi_vars);
-    unsigned int n_ues = ue_nodes.size();
+    // unsigned int n_ues = ue_nodes.size();
     
     create_backbone_nodes();
     create_mobility_model();
@@ -42,9 +39,9 @@ CoModel::CoModel(std::vector<mobile_node_t> mobile_nodes, int sim_time, bool use
     install_inet_stack();
 
     create_sta_nodes(ue_nodes);
-    NS_LOG_INFO("Created sta nodes");
+    // NS_LOG_INFO("Created sta nodes");
 
-    install_applications(n_ues);
+    install_applications();
 };
 
 std::vector<mobile_node_t> CoModel::sample_ue(Vector2d roi_means, Vector2d roi_vars) {
@@ -55,11 +52,11 @@ std::vector<mobile_node_t> CoModel::sample_ue(Vector2d roi_means, Vector2d roi_v
     // std::normal_distribution<> d1{roi_means(0),roi_vars(0)};
     // std::normal_distribution<> d2{roi_means(1),roi_vars(1)};
 
-    Vector pose1(6.8, -12, 0);
+    Vector pose1(16.8, -12, 0);
     Vector pose2(0, 0, 0);
-    Vector pose3(9.11027, 8.84741,0);
-    Vector pose4(-3, -10.857286, 0);
-    Vector pose5(-2.65528, -3.03626, 0);
+    Vector pose3(19.11027, 8.84741,0);
+    Vector pose4(-31, 5.857286, 0);
+    Vector pose5(-12.65528, 10.03626, 0);
     mobile_node_t ue_node1 = {.position=pose1, .id=1};
     mobile_node_t ue_node2 = {.position=pose2, .id=2};
     mobile_node_t ue_node3 = {.position=pose3, .id=3};
@@ -70,7 +67,6 @@ std::vector<mobile_node_t> CoModel::sample_ue(Vector2d roi_means, Vector2d roi_v
     ue_nodes.push_back(ue_node3);
     ue_nodes.push_back(ue_node4);
     ue_nodes.push_back(ue_node5);
-
 
     // for(int i=0; i<n_ues; i++) {
     //     mobile_node_t ue_node = {.position=pose, .id=i};
@@ -154,40 +150,28 @@ void CoModel::create_sta_nodes(std::vector<mobile_node_t> ue_nodes) {
     NetDeviceContainer sta_devices = wifi_infra.Install (wifiPhy, mac_infra, stas);
 
     // setup aps
-
     aps = backbone;
-    
-    
     mac_infra.SetType("ns3::ApWifiMac", "Ssid", SsidValue (ssid));
     NetDeviceContainer ap_devices = wifi_infra.Install(wifiPhy, mac_infra, aps);
     
-    // NetDeviceContainer infraDevices (ap_devices, sta_devices);
     NS_LOG_INFO("setup infra devices");
-
     // add ipv4 to infra nodes
     InternetStackHelper stack;
+    // OlsrHelper olsr;
+    // stack.SetRoutingHelper (olsr);
+    NetDeviceContainer infraDevices (ap_devices, sta_devices);
+    stack.Install(stas);
+
     Ipv4AddressHelper address;
     address.SetBase ("10.0.0.0", "255.255.255.0");
-    stack.Install(stas);
     // stack.Install(aps);
-    interfaces_ap = address.Assign(ap_devices);
-    interfaces_sta = address.Assign(sta_devices);
+    interfaces_ap = address.Assign(infraDevices);
+    // interfaces_sta = address.Assign(sta_devices);
 
     address.NewNetwork();
 
     // constant mobility for sta nodes
-    MobilityHelper mobility_sta, mobility_ap;
-
-    Ptr<ListPositionAllocator> positionAllocAP = CreateObject<ListPositionAllocator>();
-    // for (uint32_t i = 0;i<n_nodes;i++) {
-    //     mobile_node_t mobile_node = mobile_nodes[i];
-    //     NS_LOG_INFO("AP Pose: id: "<<i << " Pose: "<< mobile_node.position);
-    //     positionAllocAP->Add(mobile_node.position);
-    // }
-    positionAllocAP->Add(mobile_nodes[2].position);
-    mobility_ap.SetPositionAllocator(positionAllocAP);
-    mobility_ap.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
-    mobility_ap.Install (aps);
+    MobilityHelper mobility_sta;
 
     Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator>();
     for (unsigned int i = 0;i<ue_nodes.size();i++) {
@@ -195,8 +179,6 @@ void CoModel::create_sta_nodes(std::vector<mobile_node_t> ue_nodes) {
         positionAlloc->Add(ue_node.position);
     }
     NS_LOG_INFO("Setting STA mobility model");
-
-
     mobility_sta.SetPositionAllocator(positionAlloc);
     mobility_sta.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
     mobility_sta.Install(stas);
@@ -205,9 +187,8 @@ void CoModel::create_sta_nodes(std::vector<mobile_node_t> ue_nodes) {
     if (pcap)
     {
         NS_LOG_DEBUG("Enabled packet capturing.");
-        wifiPhy.EnablePcapAll (std::string ("rosns3"));
+        wifiPhy.EnablePcapAll (std::string ("ap-"));
     }
-
 
     // if (print_routes)
     // {
@@ -252,39 +233,63 @@ void CoModel::create_backbone_devices() {
 };
 
 // install applications on sta nodes
-void CoModel::install_applications(unsigned int n_ues) {
+void CoModel::install_applications() {
     // address of the last sta
-    NS_LOG_DEBUG("here11.");
-
-    V4PingHelper ping (interfaces_sta.GetAddress(3));
+    NS_LOG_DEBUG("Creating UDP Applications");
     
-    NS_LOG_DEBUG("here12.");
+    Config::SetDefault ("ns3::OnOffApplication::PacketSize", StringValue ("1472"));
+    Config::SetDefault ("ns3::OnOffApplication::DataRate", StringValue ("500kb/s"));
+    
+    uint16_t port = 9;
+    Ptr<Node> appSource = stas.Get(1); //10.0.0.5
+    Ptr<Node> appSink = stas.Get(2); //10.0.0.6
+    Ipv4Address remoteAddr = appSink->GetObject<Ipv4> ()->GetAddress (1, 0).GetLocal ();
+    OnOffHelper onoff ("ns3::UdpSocketFactory",
+                     Address (InetSocketAddress (remoteAddr, port)));  
 
-    ping.SetAttribute ("Verbose", BooleanValue (true));
-    const Time t = Seconds(1);
-    ping.SetAttribute ("Interval", TimeValue(t));
-
-    // // install ping app on 1st sta
-    ApplicationContainer apps;
-    apps.Add(ping.Install (stas.Get (1)));
-
+    ApplicationContainer apps = onoff.Install (appSource);
     apps.Start (Seconds (1));
-    apps.Stop (Seconds (sim_time) - Seconds (0.5));
+    apps.Stop (Seconds (sim_time) - Seconds (1));
+
+    PacketSinkHelper sink ("ns3::UdpSocketFactory",
+                         InetSocketAddress (Ipv4Address::GetAny (), port));
+    apps = sink.Install (appSink);
+    apps.Start (Seconds (1));
+
+    // V4PingHelper ping (interfaces_ap.GetAddress(3));
+    // NS_LOG_DEBUG("here12.");
+
+    // ping.SetAttribute ("Verbose", BooleanValue (true));
+    // const Time t = Seconds(1);
+    // ping.SetAttribute ("Interval", TimeValue(t));
+
+    // // // install ping app on 1st sta
+    // ApplicationContainer apps;
+    // apps.Add(ping.Install (stas.Get (1)));
+
+    // apps.Start (Seconds (1));
+    // apps.Stop (Seconds (sim_time) - Seconds (0.5));
 
     // p1.Start (Seconds (0));
     // p1.Stop (Seconds (sim_time) - Seconds (0.001));
     // Ipv4GlobalRoutingHelper::PopulateRoutingTables ();
 
-    NS_LOG_DEBUG("Installed ping applications.");
+    NS_LOG_DEBUG("Installed UDP applications.");
 
 };
 
 void CoModel::install_inet_stack() {
     AodvHelper aodv;
+    OlsrHelper olsr;
     // you can configure AODV attributes here using aodv.Set(name, value)
     InternetStackHelper stack;
-    stack.SetRoutingHelper (aodv); // has effect on the next Install ()
+
+    // stack.SetRoutingHelper (aodv); // has effect on the next Install ()
+    // stack.Install (backbone);
+    
+    stack.SetRoutingHelper (olsr);
     stack.Install (backbone);
+
     Ipv4AddressHelper address;
     address.SetBase ("172.16.0.0", "255.255.255.0");
     interfaces_bb = address.Assign (devices);
