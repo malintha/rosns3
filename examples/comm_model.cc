@@ -9,35 +9,33 @@
 #include "ns3/applications-module.h"
 #include "ns3/olsr-helper.h"
 #include "ns3/on-off-helper.h"
-
 // #include "ns3/udp-echo-helper.h"
 
 #include <random>
 
-NS_LOG_COMPONENT_DEFINE("ROSNS3Model");
+NS_LOG_COMPONENT_DEFINE ("ROSNS3Model");
 
-CoModel::CoModel(std::vector<mobile_node_t> mobile_nodes, int sim_time, bool use_real_time) : mobile_nodes(mobile_nodes), sim_time(sim_time), use_real_time(use_real_time)
-{
-    pcap = false;
+CoModel::CoModel(std::vector<mobile_node_t> mobile_nodes, int sim_time, bool use_real_time):
+                mobile_nodes(mobile_nodes),sim_time(sim_time), use_real_time(use_real_time) {
+    pcap = true;
     print_routes = true;
     n_nodes = mobile_nodes.size();
 
-    if (use_real_time)
-    {
-        GlobalValue::Bind("SimulatorImplementationType", StringValue(
-                                                             "ns3::RealtimeSimulatorImpl"));
+    if (use_real_time) {
+        GlobalValue::Bind ("SimulatorImplementationType", StringValue (
+                            "ns3::RealtimeSimulatorImpl"));
     }
     // init roi_params
-    Vector2d roi_means(0, 0);
-    Vector2d roi_vars(5, 15);
+    Vector2d roi_means(0,0);
+    Vector2d roi_vars(5,15);
 
     std::vector<mobile_node_t> ue_nodes = sample_ue(roi_means, roi_vars);
     // unsigned int n_ues = ue_nodes.size();
-
+    
     // create_backbone_nodes();
     create_backbone_devices();
     create_mobility_model();
-    // install_inet_stack();
+    install_inet_stack();
 
     create_sta_nodes(ue_nodes);
     // NS_LOG_INFO("Created sta nodes");
@@ -45,8 +43,7 @@ CoModel::CoModel(std::vector<mobile_node_t> mobile_nodes, int sim_time, bool use
     install_applications();
 };
 
-std::vector<mobile_node_t> CoModel::sample_ue(Vector2d roi_means, Vector2d roi_vars)
-{
+std::vector<mobile_node_t> CoModel::sample_ue(Vector2d roi_means, Vector2d roi_vars) {
     // int n_ues = 5;
     std::vector<mobile_node_t> ue_nodes;
     // std::random_device rd{};
@@ -54,103 +51,181 @@ std::vector<mobile_node_t> CoModel::sample_ue(Vector2d roi_means, Vector2d roi_v
     // std::normal_distribution<> d1{roi_means(0),roi_vars(0)};
     // std::normal_distribution<> d2{roi_means(1),roi_vars(1)};
 
-    Vector pose1(-25.8, -12, 0);
-    Vector pose2(5, 0, 0);
-    Vector pose3(19.11027, 8.84741, 0);
+    Vector pose1(16.8, -12, 0);
+    Vector pose2(0, 0, 0);
+    Vector pose3(19.11027, 8.84741,0);
     Vector pose4(-31, 5.857286, 0);
     Vector pose5(-12.65528, 10.03626, 0);
-    Vector pose6(40.65528, 10.03626, 0);
-    mobile_node_t ue_node1 = {.position = pose1, .id = 1};
-    mobile_node_t ue_node2 = {.position = pose2, .id = 2};
-    mobile_node_t ue_node3 = {.position = pose3, .id = 3};
-    mobile_node_t ue_node4 = {.position = pose4, .id = 4};
-    mobile_node_t ue_node5 = {.position = pose5, .id = 5};
-    mobile_node_t ue_node6 = {.position = pose6, .id = 6};
+    mobile_node_t ue_node1 = {.position=pose1, .id=1};
+    mobile_node_t ue_node2 = {.position=pose2, .id=2};
+    mobile_node_t ue_node3 = {.position=pose3, .id=3};
+    mobile_node_t ue_node4 = {.position=pose4, .id=4};
+    mobile_node_t ue_node5 = {.position=pose5, .id=5};
     ue_nodes.push_back(ue_node1);
     ue_nodes.push_back(ue_node2);
     ue_nodes.push_back(ue_node3);
     ue_nodes.push_back(ue_node4);
     ue_nodes.push_back(ue_node5);
-    ue_nodes.push_back(ue_node6);
 
     // for(int i=0; i<n_ues; i++) {
     //     mobile_node_t ue_node = {.position=pose, .id=i};
     //     NS_LOG_INFO("STA Locations: "<< "id: "<<i << " pose: "<< pose );
-    //     ue_nodes.push_back(ue_node);
+    //     ue_nodes.push_back(ue_node);   
     // }
 
     return ue_nodes;
 }
 
-void CoModel::run()
-{
-    auto simulator_t = [this]()
-    {
-        Simulator::Stop(Seconds(sim_time));
-        Simulator::Run();
+void CoModel::run() {
+    auto simulator_t = [this]() {
+        Simulator::Stop (Seconds (sim_time));        
+        Simulator::Run ();
         NS_LOG_DEBUG("Finished simulation.");
         report(std::cout);
         // Simulator::Destroy();
     };
-    if (use_real_time)
-    {
+    if(use_real_time) {
         NS_LOG_DEBUG("Simulation started in a new thread.");
         this->simulator = new std::thread(simulator_t);
     }
-    else
-    {
+    else {
         NS_LOG_DEBUG("Simulation started.");
         simulator_t();
     }
 };
 
-void CoModel::update_mobility_model(std::vector<mobile_node_t> mobile_nodes)
-{
+void CoModel::update_mobility_model(std::vector<mobile_node_t> mobile_nodes) {
     this->mobile_nodes = mobile_nodes;
-    for (uint32_t i = 0; i < n_nodes; i++)
-    {
-        Ptr<Node> node = backbone.Get(i);
-        Ptr<MobilityModel> mob = node->GetObject<MobilityModel>();
+    for (uint32_t i = 0; i<n_nodes;i++) {
+        Ptr<Node> node = backbone.Get (i);
+        Ptr<MobilityModel> mob = node->GetObject<MobilityModel> ();
         mob->SetPosition(mobile_nodes[i].position);
     }
     NS_LOG_DEBUG("Simulating with the updated the mobility model.");
-
-    if (!use_real_time)
-    {
+    
+    if (!use_real_time) {
         run();
     }
 };
 
-void CoModel::create_mobility_model()
-{
+void CoModel::create_mobility_model() {
     // add constant mobility model
     Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator>();
-    for (uint32_t i = 0; i < n_nodes; i++)
-    {
+    for (uint32_t i = 0;i<n_nodes;i++) {
         mobile_node_t mobile_node = mobile_nodes[i];
         positionAlloc->Add(mobile_node.position);
     }
     mobility.SetPositionAllocator(positionAlloc);
-    mobility.SetMobilityModel("ns3::ConstantPositionMobilityModel");
-    mobility.Install(backbone);
+    mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
+    mobility.Install (backbone);
     NS_LOG_DEBUG("Created " << n_nodes << " nodes.");
 };
 
-void CoModel::report(std::ostream &){};
+void CoModel::report(std::ostream &) {};
 
+void CoModel::create_backbone_nodes() {
 
-void CoModel::create_backbone_devices()
-{    
-    backbone.Create(n_nodes);
-    for (uint32_t i = 0; i < n_nodes; i++)
+};
+
+void CoModel::install_inet_stack() {
+    AodvHelper aodv;
+    OlsrHelper olsr;
+    // you can configure AODV attributes here using aodv.Set(name, value)
+
+    // stack.SetRoutingHelper (aodv); // has effect on the next Install ()
+    // stack.Install (backbone);
+    
+    internet.SetRoutingHelper (olsr);
+    internet.Install (backbone);
+
+    address.SetBase ("172.16.0.0", "255.255.255.0");
+    interfaces_bb = address.Assign (devices);
+
+    if (print_routes)
     {
-        std::ostringstream os;
-        os << "Backbone-" << i + 1;
-        Names::Add(os.str(), backbone.Get(i));
+        Ptr<OutputStreamWrapper> routingStream = Create<OutputStreamWrapper> ("aodv.routes", std::ios::out);
+        aodv.PrintRoutingTableAllAt (Seconds (sim_time-1), routingStream);
     }
-    WifiMacHelper wifiMac;
-    wifiMac.SetType("ns3::AdhocWifiMac");
+    NS_LOG_DEBUG("Installed AODV internet stack.");
 
+};
+
+
+// create the sta nodes and the ap nodes
+void CoModel::create_sta_nodes(std::vector<mobile_node_t> ue_nodes) {
+    stas.Create(ue_nodes.size());
+    WifiHelper wifi_infra;
+
+    YansWifiChannelHelper wifiChannel = YansWifiChannelHelper::Default ();
+    YansWifiPhyHelper wifiPhy = YansWifiPhyHelper::Default ();
+    wifiPhy.SetChannel (wifiChannel.Create ());
+    Ssid ssid = Ssid ("wifi-infra");
+    wifi_infra.SetRemoteStationManager ("ns3::ArfWifiManager");
+    WifiMacHelper mac_infra;
+
+    // setup stas
+    mac_infra.SetType("ns3::StaWifiMac", "Ssid", SsidValue (ssid));
+    NetDeviceContainer sta_devices = wifi_infra.Install (wifiPhy, mac_infra, stas);
+
+    // setup aps
+    aps = backbone;
+    mac_infra.SetType("ns3::ApWifiMac", "Ssid", SsidValue (ssid));
+    NetDeviceContainer ap_devices = wifi_infra.Install(wifiPhy, mac_infra, aps);
+    
+    NS_LOG_INFO("setup infra devices");
+    // add ipv4 to infra nodes
+    // InternetStackHelper stack;
+    // OlsrHelper olsr;
+    // stack.SetRoutingHelper (olsr);
+    NetDeviceContainer infraDevices (ap_devices, sta_devices);
+    internet.Install(stas);
+
+    // Ipv4AddressHelper address;
+    address.SetBase ("10.0.0.0", "255.255.255.0");
+    // stack.Install(aps);
+    interfaces_ap = address.Assign(infraDevices);
+    // interfaces_sta = address.Assign(sta_devices);
+
+    // constant mobility for sta nodes
+    MobilityHelper mobility_sta;
+
+    Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator>();
+    for (unsigned int i = 0;i<ue_nodes.size();i++) {
+        mobile_node_t ue_node = ue_nodes[i];
+        positionAlloc->Add(ue_node.position);
+    }
+    NS_LOG_INFO("Setting STA mobility model");
+    mobility_sta.SetPositionAllocator(positionAlloc);
+    mobility_sta.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
+    // mobility_sta.SetMobilityModel ("ns3::RandomDirection2dMobilityModel",
+    //                                "Bounds", RectangleValue (Rectangle (-30, 30, -30, 30)),
+    //                                "Speed", StringValue ("ns3::ConstantRandomVariable[Constant=1]"),
+    //                                "Pause", StringValue ("ns3::ConstantRandomVariable[Constant=0.4]"));
+
+    mobility_sta.Install(stas);
+    NS_LOG_DEBUG("Created STA and AP nodes.");
+
+    if (pcap)
+    {
+        NS_LOG_DEBUG("Enabled packet capturing.");
+        wifiPhy.EnablePcapAll (std::string ("ap-"));
+    }
+
+}
+
+void CoModel::create_backbone_devices() {
+    backbone.Create(n_nodes);
+    for (uint32_t i = 0;i<n_nodes;i++) {
+        std::ostringstream os;
+        os << "backbone-" << i+1;
+        Names::Add (os.str (), backbone.Get (i));
+    }
+
+    WifiMacHelper wifiMac;
+    wifiMac.SetType ("ns3::AdhocWifiMac");
+    YansWifiPhyHelper wifiPhy = YansWifiPhyHelper::Default ();
+    YansWifiChannelHelper wifiChannel = YansWifiChannelHelper::Default ();
+    wifiPhy.SetChannel (wifiChannel.Create ());
     WifiHelper wifi;
 
     /**
@@ -166,167 +241,65 @@ void CoModel::create_backbone_devices()
      * ffect on some rate control algorithms.
      * 
      * **/
-    wifi.SetRemoteStationManager("ns3::ConstantRateWifiManager", "DataMode",
-                                 StringValue("OfdmRate54Mbps"), "RtsCtsThreshold", UintegerValue(0));
-    
-    YansWifiPhyHelper wifiPhy = YansWifiPhyHelper::Default();
-    YansWifiChannelHelper wifiChannel = YansWifiChannelHelper::Default();
-    wifiPhy.SetChannel(wifiChannel.Create());
-
-    bb_devices = wifi.Install(wifiPhy, wifiMac, backbone);
-    InternetStackHelper stack;
-    AodvHelper routing;
-    // OlsrHelper routing;
-    stack.SetRoutingHelper(routing);
-
-    stack.Install(backbone);
-    Ipv4AddressHelper address;
-    address.SetBase("172.16.0.0", "255.255.255.0");
-    interfaces_bb = address.Assign(bb_devices);
-    // address.NewNetwork();
+    wifi.SetRemoteStationManager ("ns3::ConstantRateWifiManager", "DataMode", 
+                    StringValue ("OfdmRate54Mbps"), "RtsCtsThreshold", UintegerValue (0));
+    devices = wifi.Install (wifiPhy, wifiMac, backbone); 
 
     if (pcap)
     {
         NS_LOG_DEBUG("Enabled packet capturing.");
-        wifiPhy.EnablePcapAll(std::string("rosns3"));
+        wifiPhy.EnablePcapAll (std::string ("rosns3"));
     }
-    if (print_routes)
-    {
-        Ptr<OutputStreamWrapper> routingStream = Create<OutputStreamWrapper>("aodv.routes", std::ios::out);
-        routing.PrintRoutingTableAllAt(Seconds(sim_time - 1), routingStream);
-    }
-
     NS_LOG_DEBUG("Installed wifi devices.");
+
 };
-
-// create the sta nodes and the ap nodes
-void CoModel::create_sta_nodes(std::vector<mobile_node_t> ue_nodes)
-{
-    // setup aps
-    Ipv4AddressHelper address;
-    address.SetBase("10.0.0.0", "255.255.255.0");
-
-    for (uint32_t i = 0; i < n_nodes; i++)
-    {
-        WifiHelper wifi_infra;
-        YansWifiChannelHelper wifiChannel = YansWifiChannelHelper::Default();
-        YansWifiPhyHelper wifiPhy = YansWifiPhyHelper::Default();
-        wifiPhy.SetChannel(wifiChannel.Create());
-        Ssid ssid = Ssid("wifi-infra");
-        wifi_infra.SetRemoteStationManager("ns3::ArfWifiManager");
-        WifiMacHelper mac_infra;
-
-        mac_infra.SetType("ns3::ApWifiMac", "Ssid", SsidValue(ssid));
-        NetDeviceContainer ap_devices = wifi_infra.Install(wifiPhy, mac_infra, backbone.Get(i));
-        NodeContainer sta_t;
-        sta_t.Create(2);
-
-        mac_infra.SetType("ns3::StaWifiMac", "Ssid", SsidValue(ssid));
-        NetDeviceContainer sta_devices = wifi_infra.Install(wifiPhy, mac_infra, sta_t);
-
-        NetDeviceContainer infraDevices(ap_devices, sta_devices);
-        InternetStackHelper stack;
-        stack.Install(sta_t);
-        address.Assign(infraDevices);
-        // constant mobility for sta nodes
-        MobilityHelper mobility_sta;
-        Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator>();
-        for (unsigned int j = 0; j < 2; j++)
-        {
-            mobile_node_t ue_node = ue_nodes[j + 2 * i];
-            positionAlloc->Add(ue_node.position);
-        }
-        NS_LOG_INFO("Setting STA mobility model");
-        // mobility_sta.PushReferenceMobilityModel(backbone.Get(1));
-        mobility_sta.SetPositionAllocator(positionAlloc);
-        mobility_sta.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
-
-        // mobility_sta.SetMobilityModel("ns3::RandomDirection2dMobilityModel",
-        //                               "Bounds", RectangleValue(Rectangle(-20, 20, -20, 20)),
-        //                               "Speed", StringValue("ns3::ConstantRandomVariable[Constant=3]"),
-        //                               "Pause", StringValue("ns3::ConstantRandomVariable[Constant=0.4]"));
-        mobility_sta.Install(sta_t);
-        stas.Add(sta_t);
-        if (pcap)
-        {
-            NS_LOG_DEBUG("Enabled packet capturing.");
-            wifiPhy.EnablePcapAll(std::string("ap-"));
-        }
-
-        NS_LOG_DEBUG("Created STA and AP nodes.");
-    }
-
-    Ipv4GlobalRoutingHelper::PopulateRoutingTables ();
-}
 
 // install applications on sta nodes
-void CoModel::install_applications()
-{
+void CoModel::install_applications() {
     // address of the last sta
     NS_LOG_DEBUG("Creating UDP Applications");
+    
+    Config::SetDefault ("ns3::OnOffApplication::PacketSize", StringValue ("1472"));
+    Config::SetDefault ("ns3::OnOffApplication::DataRate", StringValue ("1000kb/s"));
+    
+    uint16_t port = 9;
+    Ptr<Node> appSource = stas.Get(0); //10.0.0.3
+    Ptr<Node> appSink = stas.Get(4); //10.0.0.(3+4)
+    Ipv4Address remoteAddr = appSink->GetObject<Ipv4> ()->GetAddress (1, 0).GetLocal ();
+    OnOffHelper onoff ("ns3::UdpSocketFactory",
+                     Address (InetSocketAddress (remoteAddr, port)));  
 
-    // Ipv4Address remoteAddr = sink->GetObject<Ipv4> ()->GetAddress (1, 0).GetLocal ();
-    Ipv4Address remoteAddr("10.0.0.4");
-    V4PingHelper ping(remoteAddr);
-    // V4PingHelper ping(interfaces_bb.GetAddress (2));
+    ApplicationContainer apps = onoff.Install (appSource);
+    apps.Start (Seconds (1));
+    apps.Stop (Seconds (sim_time) - Seconds (1));
 
-    ping.SetAttribute("Verbose", BooleanValue(true));
-    const Time t = Seconds(1);
-    ping.SetAttribute("Interval", TimeValue(t));
+    PacketSinkHelper sink ("ns3::UdpSocketFactory",
+                         InetSocketAddress (Ipv4Address::GetAny (), port));
+    apps = sink.Install (appSink);
+    apps.Start (Seconds (1));
 
-    // // install ping app on source sta
-    ApplicationContainer apps;
-    Ptr<Node> source = NodeList::GetNode (n_nodes);
 
-    apps.Add(ping.Install(source));
-    Ipv4Address sourceAdd = source->GetObject<Ipv4> ()->GetAddress (1, 0).GetLocal ();
-    NS_LOG_DEBUG("Ping source: "<< sourceAdd);
+    // Ipv4Address remoteAddr("10.0.0.6");
+    // V4PingHelper ping(remoteAddr);
+    // // V4PingHelper ping(interfaces_bb.GetAddress (2));
 
-    apps.Start(Seconds(3));
-    apps.Stop(Seconds(sim_time) - Seconds(0.5));
+    // ping.SetAttribute("Verbose", BooleanValue(true));
+    // const Time t = Seconds(1);
+    // ping.SetAttribute("Interval", TimeValue(t));
 
-    // Config::SetDefault ("ns3::OnOffApplication::PacketSize", StringValue ("1472"));
-    // Config::SetDefault ("ns3::OnOffApplication::DataRate", StringValue ("500kb/s"));
-    // uint16_t port = 9;
-    // Ptr<Node> appSource = stas.Get(0); //10.0.0.5
-    // Ptr<Node> appSink = stas.Get(4); //10.0.0.7
-    // Ipv4Address remoteAddrs = appSink->GetObject<Ipv4> ()->GetAddress (1, 0).GetLocal ();
-    // OnOffHelper onoff ("ns3::UdpSocketFactory",
-    //                  Address (InetSocketAddress (remoteAddrs, port)));
+    // // // install ping app on source sta
+    // ApplicationContainer apps;
+    // Ptr<Node> source = NodeList::GetNode (n_nodes);
 
-    // ApplicationContainer app_udp = onoff.Install (appSource);
-    // app_udp.Start (Seconds (1));
-    // app_udp.Stop (Seconds (sim_time) - Seconds (1));
+    // apps.Add(ping.Install(source));
+    // Ipv4Address sourceAdd = source->GetObject<Ipv4> ()->GetAddress (1, 0).GetLocal ();
+    // NS_LOG_DEBUG("Ping source: "<< sourceAdd);
 
-    // PacketSinkHelper sink ("ns3::UdpSocketFactory",
-    //                      InetSocketAddress (Ipv4Address::GetAny (), port));
-    // app_udp = sink.Install (appSink);
-    // app_udp.Start (Seconds (1));
+    // apps.Start(Seconds(3));
+    // apps.Stop(Seconds(sim_time) - Seconds(0.5));
 
     NS_LOG_DEBUG("Installed UDP applications.");
+
 };
 
-void CoModel::install_inet_stack()
-{
-    AodvHelper aodv;
-    OlsrHelper olsr;
-    // you can configure AODV attributes here using aodv.Set(name, value)
-    InternetStackHelper stack;
 
-    // stack.SetRoutingHelper (aodv); // has effect on the next Install ()
-    // stack.Install (backbone);
-
-    stack.SetRoutingHelper(olsr);
-    stack.Install(backbone);
-
-    Ipv4AddressHelper address;
-    address.SetBase("172.16.0.0", "255.255.255.0");
-    interfaces_bb = address.Assign(bb_devices);
-
-    if (print_routes)
-    {
-        Ptr<OutputStreamWrapper> routingStream = Create<OutputStreamWrapper>("aodv.routes", std::ios::out);
-        aodv.PrintRoutingTableAllAt(Seconds(sim_time - 1), routingStream);
-    }
-    NS_LOG_DEBUG("Installed AODV internet stack.");
-};
