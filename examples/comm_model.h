@@ -24,12 +24,12 @@ class CoModel {
         uint32_t n_nodes;
         NodeContainer backbone;
         NodeContainer stas;
-        NodeContainer aps;
+        // NodeContainer aps;
         NetDeviceContainer bb_devices;
 
         Ipv4InterfaceContainer interfaces_bb;
-        Ipv4InterfaceContainer interfaces_sta;
-        Ipv4InterfaceContainer interfaces_infra;
+        // Ipv4InterfaceContainer interfaces_sta;
+        // Ipv4InterfaceContainer interfaces_infra;
 
         MobilityHelper mobility;
         bool pcap, print_routes;
