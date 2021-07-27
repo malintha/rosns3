@@ -25,11 +25,11 @@ class CoModel {
         NodeContainer backbone;
         NodeContainer stas;
         NodeContainer aps;
-        NetDeviceContainer devices;
+        NetDeviceContainer bb_devices;
 
         Ipv4InterfaceContainer interfaces_bb;
         Ipv4InterfaceContainer interfaces_sta;
-        Ipv4InterfaceContainer interfaces_ap;
+        Ipv4InterfaceContainer interfaces_infra;
 
         MobilityHelper mobility;
         bool pcap, print_routes;
