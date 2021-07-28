@@ -25,7 +25,7 @@ int main (int argc, char *argv[])
   while(server.get_server_status()) {
     if(server.data_ready()) {
       recvdata_t data = server.get_data();
-      int sim_time = 20;
+      int sim_time = 10;
       ssize_t n_bytes = data.n_bytes;
       char* buffer = data.buffer;
       char agent_data[n_bytes];

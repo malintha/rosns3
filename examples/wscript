@@ -2,8 +2,8 @@
 
 def build(bld):
     obj = bld.create_ns3_program('rosns3-example', 
-                                ['rosns3','internet-apps','wifi','network'])
-    obj.source = ['rosns3-example.cc','comm_model.cc']
+                                ['rosns3','internet-apps','wifi','network','netanim'])
+    obj.source = ['rosns3-example.cc','comm_model.cc','utils.cc']
     obj.includes = [obj.includes, './include']
     # obj.libpath = '/usr/lib/'
     # obj.lib = 'socket++'
