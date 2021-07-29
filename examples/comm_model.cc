@@ -1,7 +1,6 @@
 #include "comm_model.h"
 #include "ns3/constant-position-mobility-model.h"
 #include "ns3/yans-wifi-helper.h"
-#include "ns3/aodv-module.h"
 #include "ns3/nstime.h"
 #include "ns3/ssid.h"
 #include <fstream>
@@ -10,6 +9,8 @@
 #include "ns3/olsr-helper.h"
 #include "ns3/on-off-helper.h"
 #include "ns3/netanim-module.h"
+#include "ns3/propagation-loss-model.h"
+
 // #include "utils.h"
 
 // #include "ns3/udp-echo-helper.h"
@@ -22,7 +23,7 @@ CoModel::CoModel(std::vector<mobile_node_t> mobile_nodes, int sim_time, bool use
     pcap = false;
     print_routes = true;
     netanim = false;
-    verbose = false;
+    verbose = true;
     n_nodes = mobile_nodes.size();
 
     if (use_real_time) {
@@ -31,12 +32,12 @@ CoModel::CoModel(std::vector<mobile_node_t> mobile_nodes, int sim_time, bool use
     }
     // init roi_params
     Vector2d roi_means(0,0);
-    Vector2d roi_vars(5,15);
+    Vector2d roi_vars(20,20);
 
     std::vector<mobile_node_t> ue_nodes = utils::get_ue(roi_means, roi_vars);
-    // for (uint i=0;i<ue_nodes.size(); i++) {
-    //     NS_LOG_DEBUG("ue: "<<ue_nodes[i].id<<" "<<ue_nodes[i].position << " "<< ue_nodes[i].position.GetLength());
-    // }
+    for (uint i=0;i<ue_nodes.size(); i++) {
+        NS_LOG_DEBUG("ue: "<<ue_nodes[i].id<<" "<<ue_nodes[i].position << " "<< ue_nodes[i].position.GetLength());
+    }
 
     // create_backbone_nodes();
     create_backbone_devices();
@@ -46,15 +47,20 @@ CoModel::CoModel(std::vector<mobile_node_t> mobile_nodes, int sim_time, bool use
     create_sta_nodes(ue_nodes);
     // NS_LOG_INFO("Created sta nodes");
 
-    install_applications();
+    // install_applications();
+    install_distance_ping();
 };
-
 
 
 void CoModel::run() {
     auto simulator_t = [this]() {
     if(this->netanim) {
             AnimationInterface anim ("ros-ns3.xml");
+    }
+    if (print_routes)
+    {
+        Ptr<OutputStreamWrapper> routingStream = Create<OutputStreamWrapper> ("aodv.routes", std::ios::out);
+        aodv.PrintRoutingTableAllAt (Seconds (sim_time-1), routingStream);
     }
         Simulator::Stop (Seconds (sim_time));        
         Simulator::Run ();
@@ -107,12 +113,8 @@ void CoModel::create_backbone_nodes() {
 };
 
 void CoModel::install_inet_stack() {
-    AodvHelper aodv;
     // OlsrHelper olsr;
     // you can configure AODV attributes here using aodv.Set(name, value)
-
-    // stack.SetRoutingHelper (aodv); // has effect on the next Install ()
-    // stack.Install (backbone);
     
     internet.SetRoutingHelper (aodv);
     internet.Install (backbone);
@@ -120,11 +122,11 @@ void CoModel::install_inet_stack() {
     address.SetBase ("172.16.0.0", "255.255.255.0");
     interfaces_bb = address.Assign (devices);
 
-    if (print_routes)
-    {
-        Ptr<OutputStreamWrapper> routingStream = Create<OutputStreamWrapper> ("aodv.routes", std::ios::out);
-        aodv.PrintRoutingTableAllAt (Seconds (sim_time-1), routingStream);
-    }
+    // if (print_routes)
+    // {
+    //     Ptr<OutputStreamWrapper> routingStream = Create<OutputStreamWrapper> ("aodv.routes", std::ios::out);
+    //     aodv.PrintRoutingTableAllAt (Seconds (sim_time-1), routingStream);
+    // }
     NS_LOG_DEBUG("Installed AODV internet stack.");
 
 };
@@ -137,6 +139,13 @@ void CoModel::create_sta_nodes(std::vector<mobile_node_t> ue_nodes) {
 
     YansWifiChannelHelper wifiChannel = YansWifiChannelHelper::Default ();
     YansWifiPhyHelper wifiPhy = YansWifiPhyHelper::Default ();
+
+    wifiChannel.AddPropagationLoss("ns3::LogDistancePropagationLossModel", "Exponent", ns3::DoubleValue(2.52),
+                                    "ReferenceLoss", ns3::DoubleValue(-53));
+    wifiChannel.AddPropagationLoss("ns3::NakagamiPropagationLossModel","m0",ns3::DoubleValue(1),
+                                    "m1",ns3::DoubleValue(1),"m2",ns3::DoubleValue(1));
+    wifiChannel.SetPropagationDelay ("ns3::ConstantSpeedPropagationDelayModel");
+
     wifiPhy.SetChannel (wifiChannel.Create ());
     Ssid ssid = Ssid ("wifi-infra");
     wifi_infra.SetRemoteStationManager ("ns3::ArfWifiManager");
@@ -173,11 +182,11 @@ void CoModel::create_sta_nodes(std::vector<mobile_node_t> ue_nodes) {
     }
     NS_LOG_INFO("Setting STA mobility model");
     mobility_sta.SetPositionAllocator(positionAlloc);
-    // mobility_sta.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
-    mobility_sta.SetMobilityModel ("ns3::RandomDirection2dMobilityModel",
-                                   "Bounds", RectangleValue (Rectangle (-30, 30, -30, 30)),
-                                   "Speed", StringValue ("ns3::ConstantRandomVariable[Constant=1]"),
-                                   "Pause", StringValue ("ns3::ConstantRandomVariable[Constant=0.4]"));
+    mobility_sta.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
+    // mobility_sta.SetMobilityModel ("ns3::RandomDirection2dMobilityModel",
+    //                                "Bounds", RectangleValue (Rectangle (-30, 30, -30, 30)),
+    //                                "Speed", StringValue ("ns3::ConstantRandomVariable[Constant=1]"),
+    //                                "Pause", StringValue ("ns3::ConstantRandomVariable[Constant=0.4]"));
 
     mobility_sta.Install(stas);
     NS_LOG_DEBUG("Created STA and AP nodes.");
@@ -190,6 +199,7 @@ void CoModel::create_sta_nodes(std::vector<mobile_node_t> ue_nodes) {
 
 }
 
+// todo: add error model to the channel
 void CoModel::create_backbone_devices() {
     backbone.Create(n_nodes);
     for (uint32_t i = 0;i<n_nodes;i++) {
@@ -200,10 +210,23 @@ void CoModel::create_backbone_devices() {
 
     WifiMacHelper wifiMac;
     wifiMac.SetType ("ns3::AdhocWifiMac");
+
+    // yanswifiPhy by defaul implements 802.11a. the maximum ofdm rate for 802.11a is 54 which is used here.
     YansWifiPhyHelper wifiPhy = YansWifiPhyHelper::Default ();
     YansWifiChannelHelper wifiChannel = YansWifiChannelHelper::Default ();
+
+    // Ptr<YansWifiChannel> wifiChannel = CreateObject<YansWifiChannel> ();
+    // channel->SetPropagationDelayModel (CreateObject<ConstantSpeedPropagationDelayModel> ());
+    // Ptr<LogDistancePropagationLossModel> log = CreateObject<LogDistancePropagationLossModel> ();
+    // channel->SetPropagationLossModel (log);
+
+    wifiChannel.AddPropagationLoss("ns3::LogDistancePropagationLossModel", "Exponent", ns3::DoubleValue(2.52),
+                                    "ReferenceLoss", ns3::DoubleValue(-53));
+    wifiChannel.AddPropagationLoss("ns3::NakagamiPropagationLossModel","m0",ns3::DoubleValue(1),
+                                    "m1",ns3::DoubleValue(1),"m2",ns3::DoubleValue(1));
+    wifiChannel.SetPropagationDelay ("ns3::ConstantSpeedPropagationDelayModel");
     wifiPhy.SetChannel (wifiChannel.Create ());
-    WifiHelper wifi;
+    
 
     /**
      * https://www.nsnam.org/docs/release/3.21/doxygen/classns3_1_1_constant_rate_wifi_manager.html
@@ -218,6 +241,7 @@ void CoModel::create_backbone_devices() {
      * ffect on some rate control algorithms.
      * 
      * **/
+    WifiHelper wifi;
     wifi.SetRemoteStationManager ("ns3::ConstantRateWifiManager", "DataMode", 
                     StringValue ("OfdmRate54Mbps"), "RtsCtsThreshold", UintegerValue (0));
     devices = wifi.Install (wifiPhy, wifiMac, backbone); 
@@ -279,4 +303,29 @@ void CoModel::install_applications() {
 
 };
 
+// establish ping between the farthest and most centered sta nodes
+void CoModel::install_distance_ping() {
+    // install ping between the farthest nodes
+    ApplicationContainer ping_apps;
+    uint n_ue = stas.GetN();
+    for(uint i=0; i<n_ue/2; i++) {
+        uint dest_id = n_ue/2 + i;
+        Ptr<Node> source = stas.Get (i);
+        Ipv4Address source_add = source->GetObject<Ipv4> ()->GetAddress (1, 0).GetLocal ();
+        Ptr<Node> destination = stas.Get (dest_id);
+        Ipv4Address dest_add = destination->GetObject<Ipv4> ()->GetAddress (1, 0).GetLocal ();
+
+        V4PingHelper ping(dest_add);
+        ping.SetAttribute("Verbose", BooleanValue(verbose));
+        const Time t = Seconds(0.5);
+        ping.SetAttribute("Interval", TimeValue(t));
+        // // install ping app on source sta
+        ping_apps.Add(ping.Install(source));
+        NS_LOG_DEBUG("Ping source: "<< source_add << " dest: "<<dest_add);
+
+    }
+    ping_apps.Start(Seconds(1));
+    ping_apps.Stop(Seconds(sim_time) - Seconds(1));
+
+}
 

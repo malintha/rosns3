@@ -5,6 +5,8 @@
 #include "ns3/point-to-point-module.h"
 #include "ns3/mobility-module.h"
 #include "ns3/v4ping-helper.h"
+#include "ns3/aodv-module.h"
+
 // #include "ns3/udp-echo-helper.h"
 #include "utils.h"
 
@@ -32,7 +34,7 @@ class CoModel {
         InternetStackHelper internet;
         Ipv4AddressHelper address;
 
-
+        AodvHelper aodv;
         MobilityHelper mobility;
         bool pcap, print_routes, netanim, verbose;
         int sim_time;
@@ -45,4 +47,5 @@ class CoModel {
         std::thread* simulator;
         void create_sta_nodes(std::vector<mobile_node_t> ue_nodes);
         void create_ap_devices();
+        void install_distance_ping();
 };

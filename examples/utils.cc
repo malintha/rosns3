@@ -4,9 +4,9 @@
 #include <algorithm>
 
 std::vector<mobile_node_t> utils::get_ue(Vector2d roi_means, Vector2d roi_vars) {
-    int n_ues = 5;
+    int n_ues = 10;
     std::random_device rd{};
-    std::mt19937 gen{rd()};
+    std::mt19937 gen{};
     std::normal_distribution<> d1{roi_means(0),roi_vars(0)};
     std::normal_distribution<> d2{roi_means(1),roi_vars(1)};
 
