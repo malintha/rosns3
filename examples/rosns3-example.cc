@@ -6,7 +6,7 @@
 using namespace ns3;
 
 // commands:
-// NS_LOG="ROSNS3Server:ROSNS3Example:ROSNS3Model" ./waf --run rosns3-example
+// NS_LOG="ROSNS3Server:ROSNS3Example:ROSNS3Model" ./waf --run rosns3-example --vis
 // ./client
 
 int main (int argc, char *argv[])
@@ -50,6 +50,7 @@ int main (int argc, char *argv[])
         NS_LOG_INFO("Created CoModel");            
 
         model->run();
+        model->get_hop_info();
         sim_start = true;
       } 
       else {

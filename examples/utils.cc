@@ -29,3 +29,21 @@ std::vector<mobile_node_t> utils::get_ue(Vector2d roi_means, Vector2d roi_vars) 
 
 }
 
+std::vector<std::pair<mobile_node_t,mobile_node_t> > utils::get_farthest_pairs(std::vector<mobile_node_t> ue){
+    std::vector<std::pair<mobile_node_t,mobile_node_t> > ue_pairs;
+    // std::vector<mobile_node_t> ue_pair(2);
+
+    // std::vector<int>::iterator first = myints.begin(), last = myints.end();
+
+    //  while((*first) != n-r+1){
+    //     std::vector<int>::iterator mt = last;
+
+    //     while (*(--mt) == n-(last-mt)+1);
+    //     (*mt)++;
+    //     while (++mt != last) *mt = *(mt-1)+1;
+
+    //     std::for_each(first, last, myfunction);
+    //     std::cout << std::endl;
+    // }
+    return ue_pairs;
+}

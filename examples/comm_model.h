@@ -6,6 +6,7 @@
 #include "ns3/mobility-module.h"
 #include "ns3/v4ping-helper.h"
 #include "ns3/aodv-module.h"
+#include "ns3/olsr-helper.h"
 
 // #include "ns3/udp-echo-helper.h"
 #include "utils.h"
@@ -20,6 +21,7 @@ class CoModel {
         std::vector<mobile_node_t> mobile_nodes;
         void report(std::ostream &);
         void update_mobility_model(std::vector<mobile_node_t> mobile_nodes);
+        void get_hop_info();
 
     private:
         uint32_t n_nodes;
@@ -27,14 +29,17 @@ class CoModel {
         NodeContainer stas;
         NodeContainer aps;
         NetDeviceContainer devices;
+        std::vector<mobile_node_t> ue_nodes;
 
         Ipv4InterfaceContainer interfaces_bb;
         Ipv4InterfaceContainer interfaces_sta;
         Ipv4InterfaceContainer interfaces_ap;
         InternetStackHelper internet;
         Ipv4AddressHelper address;
+        
+        AodvHelper aodv_h;
+        OlsrHelper olsr_h;
 
-        AodvHelper aodv;
         MobilityHelper mobility;
         bool pcap, print_routes, netanim, verbose;
         int sim_time;
@@ -47,5 +52,7 @@ class CoModel {
         std::thread* simulator;
         void create_sta_nodes(std::vector<mobile_node_t> ue_nodes);
         void create_ap_devices();
-        void install_distance_ping();
+        void install_scen1();
+        void install_scen2();
+        void install_scen3();
 };

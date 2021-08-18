@@ -6,11 +6,13 @@
 #include <fstream>
 #include <string>
 #include "ns3/applications-module.h"
-#include "ns3/olsr-helper.h"
 #include "ns3/on-off-helper.h"
 #include "ns3/netanim-module.h"
 #include "ns3/propagation-loss-model.h"
-
+#include "ns3/aodv-rtable.h"
+#include <sstream>
+#include "ns3/aodv-routing-protocol.h"
+#include "ns3/olsr-routing-protocol.h"
 // #include "utils.h"
 
 // #include "ns3/udp-echo-helper.h"
@@ -23,7 +25,7 @@ CoModel::CoModel(std::vector<mobile_node_t> mobile_nodes, int sim_time, bool use
     pcap = false;
     print_routes = true;
     netanim = false;
-    verbose = true;
+    verbose = false;
     n_nodes = mobile_nodes.size();
 
     if (use_real_time) {
@@ -34,7 +36,7 @@ CoModel::CoModel(std::vector<mobile_node_t> mobile_nodes, int sim_time, bool use
     Vector2d roi_means(0,0);
     Vector2d roi_vars(20,20);
 
-    std::vector<mobile_node_t> ue_nodes = utils::get_ue(roi_means, roi_vars);
+    ue_nodes = utils::get_ue(roi_means, roi_vars);
     for (uint i=0;i<ue_nodes.size(); i++) {
         NS_LOG_DEBUG("ue: "<<ue_nodes[i].id<<" "<<ue_nodes[i].position << " "<< ue_nodes[i].position.GetLength());
     }
@@ -48,9 +50,50 @@ CoModel::CoModel(std::vector<mobile_node_t> mobile_nodes, int sim_time, bool use
     // NS_LOG_INFO("Created sta nodes");
 
     // install_applications();
-    install_distance_ping();
+    install_scen1();
 };
 
+void CoModel::get_hop_info(){
+    //  aodv::RoutingProtocol::m_routingTable 
+
+    // Ptr<Ipv4RoutingProtocol> ipv4;
+    // aodv::RoutingProtocol proto = aodv_h.GetRouting(ipv4);
+    
+    // std::stringstream ss;
+    // aodv::RoutingTableEntry rEntry;
+    Ptr<OutputStreamWrapper> ss = Create<OutputStreamWrapper> ("aodv.routes1", std::ios::out);
+    // for (uint32_t i = 0; i < n_nodes; i++)
+        // {
+        Ptr<Node> node = backbone.Get(0);
+        // Ptr<aodv::RoutingProtocol> ipv4 = node->GetObject<aodv::RoutingProtocol> ();
+        Ptr<olsr::RoutingProtocol> ipv4 = node->GetObject<olsr::RoutingProtocol> ();
+        std::cout << "table length: "<<std::endl; 
+        std::vector<olsr::RoutingTableEntry> table = ipv4->GetRoutingTableEntries();
+        for(uint32_t j=0;j<table.size(); j++) {
+            std::cout << "entree: "<<table[j].destAddr << " " << table[j].distance<<std::endl; 
+        }
+        // Ptr<O> rp = ipv4->GetRoutingProtocol ();
+        // ipv4->PrintRoutingTable(ss, Time::S);
+
+
+        // Ptr<Ipv4RoutingProtocol> rp = ipv4->GetRoutingProtocol ();
+        // rp->PrintRoutingTable (ss, Time::S);
+        // ns3::Time::Unit t_unit = Time::S;
+        // ns3::aodv::RoutingProtocol.PrintRoutingTable(ss, Time::S);
+        // rp->
+        // Simulator::Schedule (printInterval, &Ipv4RoutingHelper::PrintEvery, printInterval, node, stream, unit);
+        // }
+    // proto.PrintRoutingTable(ss, Time::S);
+    
+    // aodv::RoutingProtocol rp;
+    // Time::Unit t(9.5);
+    // rp.PrintRoutingTable(ss, Time::S);
+
+
+    // bool rt_suc = rtable.LookupRoute (Ipv4Address ("172.16.0.2"), rEntry);
+
+    // std::cout<<"suc: "<<rt_suc<<std::endl;
+}
 
 void CoModel::run() {
     auto simulator_t = [this]() {
@@ -60,13 +103,13 @@ void CoModel::run() {
     if (print_routes)
     {
         Ptr<OutputStreamWrapper> routingStream = Create<OutputStreamWrapper> ("aodv.routes", std::ios::out);
-        aodv.PrintRoutingTableAllAt (Seconds (sim_time-1), routingStream);
+        aodv_h.PrintRoutingTableAllAt (Seconds (sim_time-1), routingStream);
     }
         Simulator::Stop (Seconds (sim_time));        
         Simulator::Run ();
         NS_LOG_DEBUG("Finished simulation.");
         std::cout<<"Finished"<<std::endl;
-        report(std::cout);
+        // report(std::cout);
         // Simulator::Destroy();
     };
     if(use_real_time) {
@@ -86,7 +129,7 @@ void CoModel::update_mobility_model(std::vector<mobile_node_t> mobile_nodes) {
         Ptr<MobilityModel> mob = node->GetObject<MobilityModel> ();
         mob->SetPosition(mobile_nodes[i].position);
     }
-    NS_LOG_DEBUG("Simulating with the updated the mobility model.");
+    NS_LOG_DEBUG("Simulating with the updated mobility model.");
     
     if (!use_real_time) {
         run();
@@ -113,10 +156,9 @@ void CoModel::create_backbone_nodes() {
 };
 
 void CoModel::install_inet_stack() {
-    // OlsrHelper olsr;
     // you can configure AODV attributes here using aodv.Set(name, value)
     
-    internet.SetRoutingHelper (aodv);
+    internet.SetRoutingHelper (olsr_h);
     internet.Install (backbone);
 
     address.SetBase ("172.16.0.0", "255.255.255.0");
@@ -212,13 +254,10 @@ void CoModel::create_backbone_devices() {
     wifiMac.SetType ("ns3::AdhocWifiMac");
 
     // yanswifiPhy by defaul implements 802.11a. the maximum ofdm rate for 802.11a is 54 which is used here.
+    //todo: how to set transmission power? is that ok to be set in the loss model???
+    //tune Nakagami to zero mean rv
     YansWifiPhyHelper wifiPhy = YansWifiPhyHelper::Default ();
     YansWifiChannelHelper wifiChannel = YansWifiChannelHelper::Default ();
-
-    // Ptr<YansWifiChannel> wifiChannel = CreateObject<YansWifiChannel> ();
-    // channel->SetPropagationDelayModel (CreateObject<ConstantSpeedPropagationDelayModel> ());
-    // Ptr<LogDistancePropagationLossModel> log = CreateObject<LogDistancePropagationLossModel> ();
-    // channel->SetPropagationLossModel (log);
 
     wifiChannel.AddPropagationLoss("ns3::LogDistancePropagationLossModel", "Exponent", ns3::DoubleValue(2.52),
                                     "ReferenceLoss", ns3::DoubleValue(-53));
@@ -304,7 +343,7 @@ void CoModel::install_applications() {
 };
 
 // establish ping between the farthest and most centered sta nodes
-void CoModel::install_distance_ping() {
+void CoModel::install_scen1() {
     // install ping between the farthest nodes
     ApplicationContainer ping_apps;
     uint n_ue = stas.GetN();
@@ -328,4 +367,16 @@ void CoModel::install_distance_ping() {
     ping_apps.Stop(Seconds(sim_time) - Seconds(1));
 
 }
+
+// communication between the farthest unique links
+void CoModel::install_scen2() {
+
+}
+
+// communication between the closest nodes
+void CoModel::install_scen3() {
+
+}
+
+
 
