@@ -10,6 +10,8 @@ namespace ns3 {
 
 NS_LOG_COMPONENT_DEFINE ("ROSNS3Server");
 
+neighborhood_t::neighborhood_t(int id, std::vector<int> neighbors): id(id), neighbors(neighbors) {}
+
 ROSNS3Server::ROSNS3Server(int port) {
     if((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
         NS_LOG_ERROR("socket creation failed");
@@ -49,7 +51,7 @@ bool ROSNS3Server::start() {
             recvdata_t data_t = {.buffer = buffer, .n_bytes = n_bytes, .timestamp = timestamp};
             this->fifo_list.push_back(data_t);
         }
-        while(this->get_server_status());
+        while(this->server_running());
     };
     this->server = new std::thread(server_t);
     NS_LOG_INFO("Server started");
@@ -72,9 +74,16 @@ bool ROSNS3Server::kill() {
     return this->server_status;
 }
 
-bool ROSNS3Server::get_server_status() {
+bool ROSNS3Server::server_running() {
     return this->server_status;
 }
 
+void ROSNS3Server::send_data(uint8_t* data, uint32_t data_size) {
+    socklen_t len;
+    len = sizeof(cliaddr); 
+    sendto(sockfd, data, data_size, MSG_CONFIRM, (const struct sockaddr *) &cliaddr, len);
 }
+
+}
+
 

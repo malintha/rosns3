@@ -27,7 +27,7 @@ CoModel::CoModel(std::vector<mobile_node_t> mobile_nodes, int sim_time, bool use
     netanim = false;
     verbose = false;
     n_nodes = mobile_nodes.size();
-
+    total_time = sim_time;
     if (use_real_time) {
         GlobalValue::Bind ("SimulatorImplementationType", StringValue (
                             "ns3::RealtimeSimulatorImpl"));
@@ -53,46 +53,32 @@ CoModel::CoModel(std::vector<mobile_node_t> mobile_nodes, int sim_time, bool use
     install_scen1();
 };
 
-void CoModel::get_hop_info(){
-    //  aodv::RoutingProtocol::m_routingTable 
+std::vector<neighborhood_t> CoModel::get_hop_info(){
+    int hop_length = 1;
+    std::vector<neighborhood_t> neighborhoods;
 
-    // Ptr<Ipv4RoutingProtocol> ipv4;
-    // aodv::RoutingProtocol proto = aodv_h.GetRouting(ipv4);
-    
-    // std::stringstream ss;
-    // aodv::RoutingTableEntry rEntry;
-    Ptr<OutputStreamWrapper> ss = Create<OutputStreamWrapper> ("aodv.routes1", std::ios::out);
-    // for (uint32_t i = 0; i < n_nodes; i++)
-        // {
-        Ptr<Node> node = backbone.Get(0);
+    // Ptr<OutputStreamWrapper> ss = Create<OutputStreamWrapper> ("aodv.routes1", std::ios::out);
+    for (uint32_t i = 0; i < n_nodes; i++)
+    {
+        Ptr<Node> node = backbone.Get(i);
         // Ptr<aodv::RoutingProtocol> ipv4 = node->GetObject<aodv::RoutingProtocol> ();
-        Ptr<olsr::RoutingProtocol> ipv4 = node->GetObject<olsr::RoutingProtocol> ();
-        std::cout << "table length: "<<std::endl; 
-        std::vector<olsr::RoutingTableEntry> table = ipv4->GetRoutingTableEntries();
+        Ptr<olsr::RoutingProtocol> rp = node->GetObject<olsr::RoutingProtocol> ();
+        // std::cout << "table length: "<<std::endl; 
+        std::vector<olsr::RoutingTableEntry> table = rp->GetRoutingTableEntries();
+        std::vector<int> neighbors;
         for(uint32_t j=0;j<table.size(); j++) {
-            std::cout << "entree: "<<table[j].destAddr << " " << table[j].distance<<std::endl; 
+            olsr::RoutingTableEntry entree = table[j];
+            if(entree.distance <= hop_length) {
+                neighbors.push_back(j);
+            }
+            // std::cout << "entree: "<<table[j].destAddr << " " << table[j].distance<<std::endl; 
         }
-        // Ptr<O> rp = ipv4->GetRoutingProtocol ();
-        // ipv4->PrintRoutingTable(ss, Time::S);
-
-
-        // Ptr<Ipv4RoutingProtocol> rp = ipv4->GetRoutingProtocol ();
-        // rp->PrintRoutingTable (ss, Time::S);
-        // ns3::Time::Unit t_unit = Time::S;
-        // ns3::aodv::RoutingProtocol.PrintRoutingTable(ss, Time::S);
-        // rp->
-        // Simulator::Schedule (printInterval, &Ipv4RoutingHelper::PrintEvery, printInterval, node, stream, unit);
-        // }
-    // proto.PrintRoutingTable(ss, Time::S);
-    
-    // aodv::RoutingProtocol rp;
-    // Time::Unit t(9.5);
-    // rp.PrintRoutingTable(ss, Time::S);
-
-
-    // bool rt_suc = rtable.LookupRoute (Ipv4Address ("172.16.0.2"), rEntry);
-
-    // std::cout<<"suc: "<<rt_suc<<std::endl;
+        neighborhood_t neighborhood(i, neighbors);
+        // neighborhood.id = i;
+        // neighborhood.neighbors = neighbors;
+        neighborhoods.push_back(neighborhood);
+    }
+    return neighborhoods;
 }
 
 void CoModel::run() {
@@ -107,8 +93,8 @@ void CoModel::run() {
     }
         Simulator::Stop (Seconds (sim_time));        
         Simulator::Run ();
-        NS_LOG_DEBUG("Finished simulation.");
-        std::cout<<"Finished"<<std::endl;
+        NS_LOG_DEBUG("Finished simulation. Time: " << Simulator::Now().GetSeconds());
+
         // report(std::cout);
         // Simulator::Destroy();
     };
@@ -129,7 +115,8 @@ void CoModel::update_mobility_model(std::vector<mobile_node_t> mobile_nodes) {
         Ptr<MobilityModel> mob = node->GetObject<MobilityModel> ();
         mob->SetPosition(mobile_nodes[i].position);
     }
-    NS_LOG_DEBUG("Simulating with the updated mobility model.");
+    total_time += sim_time;
+    NS_LOG_DEBUG("Simulating with the updated mobility model. Total time: "<< total_time);
     
     if (!use_real_time) {
         run();
@@ -146,7 +133,7 @@ void CoModel::create_mobility_model() {
     mobility.SetPositionAllocator(positionAlloc);
     mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
     mobility.Install (backbone);
-    NS_LOG_DEBUG("Created " << n_nodes << " nodes.");
+    NS_LOG_DEBUG("Created " << n_nodes << "ground nodes.");
 };
 
 void CoModel::report(std::ostream &) {};

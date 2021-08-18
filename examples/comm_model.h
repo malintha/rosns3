@@ -21,8 +21,8 @@ class CoModel {
         std::vector<mobile_node_t> mobile_nodes;
         void report(std::ostream &);
         void update_mobility_model(std::vector<mobile_node_t> mobile_nodes);
-        void get_hop_info();
-
+        std::vector<neighborhood_t> get_hop_info();
+        int total_time;
     private:
         uint32_t n_nodes;
         NodeContainer backbone;

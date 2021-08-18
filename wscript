@@ -29,7 +29,7 @@ def build(bld):
     if bld.env.ENABLE_EXAMPLES:
         bld.recurse('examples')
     
-    bld.env.CXXFLAGS += ['-Wno-error']
+    bld.env.CXXFLAGS += ['-Wno-error','-Wno-sign-compare']
     
     # bld.ns3_python_bindings()
 

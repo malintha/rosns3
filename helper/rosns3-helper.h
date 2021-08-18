@@ -27,16 +27,24 @@ typedef struct mobile_node_t {
     int id;
 } mobile_node_t;
 
+typedef struct neighborhood_t {
+    int id;
+    std::vector<int> neighbors;
+
+    neighborhood_t(int id, std::vector<int> neighbors);
+} neighborhood_t;
+
 class ROSNS3Server {
     public:
         ROSNS3Server(int port);
         char* get_buffer();
         bool start();
         bool kill();
-        bool get_server_status();
+        bool server_running();
         bool data_ready();
         recvdata_t get_data();
         std::list<recvdata_t> fifo_list;
+        void send_data(uint8_t* data, uint32_t data_size);
 
     private:
         char buffer[BUFFER_LENGTH];
