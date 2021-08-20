@@ -17,23 +17,20 @@
 
 NS_LOG_COMPONENT_DEFINE ("ROSNS3Model");
 
-CoModel::CoModel(std::vector<mobile_node_t> mobile_nodes, int sim_time, bool use_real_time):
-                mobile_nodes(mobile_nodes),sim_time(sim_time), use_real_time(use_real_time) {
+CoModel::CoModel(std::vector<mobile_node_t> mobile_nodes, int backbone_nodes, int sim_time, bool use_real_time):
+                mobile_nodes(mobile_nodes),sim_time(sim_time), use_real_time(use_real_time), 
+                backbone_nodes(backbone_nodes) {
     pcap = true;
     print_routes = true;
     netanim = false;
     verbose = false;
-    n_nodes = mobile_nodes.size();
     total_time = sim_time;
     if (use_real_time) {
         GlobalValue::Bind ("SimulatorImplementationType", StringValue (
                             "ns3::RealtimeSimulatorImpl"));
     }
-    // init roi_params
-    Vector2d roi_means(0,0);
-    Vector2d roi_vars(50,50);
 
-    ue_nodes = utils::get_ue(roi_means, roi_vars);
+    ue_nodes = utils::get_ue(mobile_nodes, backbone_nodes);
     for (uint i=0;i<ue_nodes.size(); i++) {
         NS_LOG_DEBUG("ue: "<<ue_nodes[i].id<<" "<<ue_nodes[i].position << " "<< ue_nodes[i].position.GetLength());
     }
@@ -44,7 +41,7 @@ CoModel::CoModel(std::vector<mobile_node_t> mobile_nodes, int sim_time, bool use
     install_inet_stack();
     create_sta_nodes(ue_nodes);
 
-    // install_ping_applications();
+    install_ping_applications();
     // install_scen1();
 };
 
@@ -53,8 +50,6 @@ std::vector<neighborhood_t> CoModel::get_hop_info(){
     std::vector<neighborhood_t> neighborhoods;
     
     ns3::Ipv4GlobalRoutingHelper::PopulateRoutingTables();
-    // Ptr<OutputStreamWrapper> ss = Create<OutputStreamWrapper> ("aodv.routes1", std::ios::out);
-    // olsr_h.PrintRoutingTableAt(Seconds(sim_time-1), ss);
     
     for (uint32_t i = 0; i < backbone.GetN(); i++)
     {
@@ -67,7 +62,6 @@ std::vector<neighborhood_t> CoModel::get_hop_info(){
         std::vector<int> neighbors;
         for(uint32_t j=0;j<table.size(); j++) {
             olsr::RoutingTableEntry entree = table[j];
-            // NS_LOG_DEBUG("Id: "<< j<< "neighbors: ");
             if(entree.distance <= hop_length) {
             Ipv4Address dest = entree.destAddr;
 
@@ -77,11 +71,9 @@ std::vector<neighborhood_t> CoModel::get_hop_info(){
                     Ipv4Address cand_add = cand->GetObject<Ipv4> ()->GetAddress (1, 0).GetLocal ();
                     if(dest.IsEqual(cand_add)) {
                         neighbors.push_back(cand->GetId());
+                        NS_LOG_DEBUG( "id: "<< i <<" neighbor: "<< cand->GetId());
                     }
                 }
-                // NS_LOG_DEBUG();
-                
-                // neighbors.push_back(j);
             }
         }
         neighborhood_t neighborhood(i, neighbors);
@@ -120,7 +112,7 @@ void CoModel::run() {
 // update the mobility model of backbone nodes
 void CoModel::update_mobility_model(std::vector<mobile_node_t> mobile_nodes) {
     this->mobile_nodes = mobile_nodes;
-    for (uint32_t i = 0; i<n_nodes;i++) {
+    for (uint32_t i = 0; i<backbone_nodes;i++) {
         Ptr<Node> node = backbone.Get (i);
         Ptr<MobilityModel> mob = node->GetObject<MobilityModel> ();
         mob->SetPosition(mobile_nodes[i].position);
@@ -137,14 +129,14 @@ void CoModel::update_mobility_model(std::vector<mobile_node_t> mobile_nodes) {
 void CoModel::create_mobility_model() {
     // add constant mobility model
     Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator>();
-    for (uint32_t i = 0;i<n_nodes;i++) {
+    for (uint32_t i = 0;i<backbone_nodes;i++) {
         mobile_node_t mobile_node = mobile_nodes[i];
         positionAlloc->Add(mobile_node.position);
     }
     mobility.SetPositionAllocator(positionAlloc);
     mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
     mobility.Install (backbone);
-    NS_LOG_DEBUG("Created " << n_nodes << "ground nodes.");
+    NS_LOG_DEBUG("Created " << backbone_nodes << "ground nodes.");
 };
 
 void CoModel::report(std::ostream &) {};
@@ -157,12 +149,6 @@ void CoModel::install_inet_stack() {
 
     address.SetBase ("172.16.0.0", "255.255.255.0");
     interfaces_bb = address.Assign (devices);
-
-    // if (print_routes)
-    // {
-    //     Ptr<OutputStreamWrapper> routingStream = Create<OutputStreamWrapper> ("aodv.routes", std::ios::out);
-    //     aodv.PrintRoutingTableAllAt (Seconds (sim_time-1), routingStream);
-    // }
     NS_LOG_DEBUG("Installed AODV internet stack.");
 
 };
@@ -206,13 +192,6 @@ void CoModel::create_sta_nodes(std::vector<mobile_node_t> ue_nodes) {
     // Ipv4AddressHelper address;
     address.SetBase ("10.0.0.0", "255.255.255.0");
     interfaces_ap = address.Assign(infraDevices);
-
-
-    // stack.Install(aps);
-    // interfaces_ap = address.Assign(ap_devices);
-
-    // address.SetBase ("192.168.0.0", "255.255.255.0");
-    // interfaces_sta = address.Assign(sta_devices);
     
     // constant mobility for sta nodes
     MobilityHelper mobility_sta;
@@ -246,8 +225,8 @@ void CoModel::create_sta_nodes(std::vector<mobile_node_t> ue_nodes) {
 
 // todo: add error model to the channel
 void CoModel::create_backbone_devices() {
-    backbone.Create(n_nodes);
-    for (uint32_t i = 0;i<n_nodes;i++) {
+    backbone.Create(backbone_nodes);
+    for (uint32_t i = 0;i<backbone_nodes;i++) {
         std::ostringstream os;
         os << "backbone-" << i+1;
         Names::Add (os.str (), backbone.Get (i));
@@ -373,7 +352,7 @@ void CoModel::install_scen1() {
         // udp_apps.Start(Seconds(start));
         // udp_apps.Stop(Seconds(sim_time - end_buff));
         
-        // NS_LOG_DEBUG("Ping source: "<< i+n_nodes <<" "<< source_add << " dest: "<<dest_id+n_nodes <<" "<<dest_add);
+        // NS_LOG_DEBUG("Ping source: "<< i+backbone_nodes <<" "<< source_add << " dest: "<<dest_id+backbone_nodes <<" "<<dest_add);
     // }
 
     NS_LOG_DEBUG("Install UDP applications");

@@ -82,6 +82,8 @@ void ROSNS3Server::send_data(uint8_t* data, uint32_t data_size) {
     socklen_t len;
     len = sizeof(cliaddr); 
     sendto(sockfd, data, data_size, MSG_CONFIRM, (const struct sockaddr *) &cliaddr, len);
+    NS_LOG_INFO("fbs: " << data_size);
+
 }
 
 }

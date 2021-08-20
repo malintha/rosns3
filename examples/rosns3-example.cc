@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
     if (server.data_ready())
     {
       recvdata_t data = server.get_data();
-      int sim_time = 5;
+      int sim_time = 10;
       ssize_t n_bytes = data.n_bytes;
       char *buffer = data.buffer;
       char agent_data[n_bytes];
@@ -41,6 +41,8 @@ int main(int argc, char *argv[])
       // here goes the deserialization
       auto swarm = GetSwarm(agent_data);
       auto agents = swarm->agents();
+      int backbone_nodes = swarm->backbone();
+
       std::vector<mobile_node_t> mobile_nodes;
       for (unsigned int i = 0; i < agents->size(); i++)
       {
@@ -54,7 +56,7 @@ int main(int argc, char *argv[])
       // create the comm model and let the simulation run
       if (!sim_start)
       {
-        model = new CoModel(mobile_nodes, sim_time, use_real_time);
+        model = new CoModel(mobile_nodes, backbone_nodes, sim_time, use_real_time);
         NS_LOG_INFO("Created CoModel");
 
         model->run();
@@ -69,6 +71,8 @@ int main(int argc, char *argv[])
         NS_LOG_INFO("Getting updated routing tables at : " << Simulator::Now().GetSeconds());
 
         std::vector<neighborhood_t> neighborhoods = model->get_hop_info();
+        NS_LOG_INFO("Neighborhoods: " << neighborhoods[0].neighbors.size());
+
 
         // build the serializable neighborhood object
         flatbuffers::FlatBufferBuilder builder;
@@ -77,17 +81,26 @@ int main(int argc, char *argv[])
         for (int i = 0; i < neighborhoods.size(); i++)
         {
         neighborhood_t neighborhood = neighborhoods[i];
-          const std::vector<int> neighborhood_temp = neighborhood.neighbors;
-          auto neighborhood_fb = CreateNeighborhoodDirect(builder, i, &neighborhood_temp);
+          const std::vector<int> neighbors = neighborhood.neighbors;
+          auto neighborhood_fb = CreateNeighborhoodDirect(builder, i, &neighbors);
           neighborhood_vec.push_back(neighborhood_fb);
         }
         auto neighborhoods_fb = builder.CreateVector(neighborhood_vec);
         auto neighborhoods_s = CreateNeighborhoods(builder, neighborhoods_fb);
         builder.Finish(neighborhoods_s);
+        
+
         // send the neighborhoods to udp client
         uint8_t* data = builder.GetBufferPointer();
         uint32_t data_size = builder.GetSize();
         server.send_data(data, data_size);
+
+
+        char agent_data[data_size];
+        std::memcpy(agent_data, data, data_size);
+
+
+
 
       }
     }

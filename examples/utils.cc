@@ -15,7 +15,6 @@ std::vector<mobile_node_t> utils::get_ue(Vector2d roi_means, Vector2d roi_vars) 
     for(int i=0; i<n_ues; i++) {
         Vector pose(d1(gen), d2(gen), 0); 
         mobile_node_t ue_node = {.position=pose, .id=i};
-        // NS_LOG_INFO("STA Locations: "<< "id: "<<i << " pose: "<< pose );
         ue_nodes.push_back(ue_node);   
     }
 
@@ -27,6 +26,15 @@ std::vector<mobile_node_t> utils::get_ue(Vector2d roi_means, Vector2d roi_vars) 
     std::sort(ue_nodes.begin(), ue_nodes.end(), compFunctor);
     return ue_nodes;
 
+}
+std::vector<mobile_node_t> utils::get_ue(std::vector<mobile_node_t> mobile_nodes, int backbone_nodes) {
+    std::vector<mobile_node_t> ue_nodes;
+    for(int i=backbone_nodes; i<mobile_nodes.size(); i++) {
+        ue_nodes.push_back(mobile_nodes[i]);
+        std::cout << "UE Locations: "<< "id: "<<i << " pose: "<< mobile_nodes[i].position;
+
+    }
+    return ue_nodes;
 }
 
 std::vector<std::pair<mobile_node_t,mobile_node_t> > utils::get_farthest_pairs(std::vector<mobile_node_t> ue){
