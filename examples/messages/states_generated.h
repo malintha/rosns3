@@ -97,13 +97,18 @@ inline flatbuffers::Offset<Agent> CreateAgent(
 struct Swarm FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
   typedef SwarmBuilder Builder;
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
-    VT_AGENTS = 4
+    VT_BACKBONE = 4,
+    VT_AGENTS = 6
   };
+  int32_t backbone() const {
+    return GetField<int32_t>(VT_BACKBONE, 0);
+  }
   const flatbuffers::Vector<flatbuffers::Offset<Agent>> *agents() const {
     return GetPointer<const flatbuffers::Vector<flatbuffers::Offset<Agent>> *>(VT_AGENTS);
   }
   bool Verify(flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
+           VerifyField<int32_t>(verifier, VT_BACKBONE) &&
            VerifyOffset(verifier, VT_AGENTS) &&
            verifier.VerifyVector(agents()) &&
            verifier.VerifyVectorOfTables(agents()) &&
@@ -115,6 +120,9 @@ struct SwarmBuilder {
   typedef Swarm Table;
   flatbuffers::FlatBufferBuilder &fbb_;
   flatbuffers::uoffset_t start_;
+  void add_backbone(int32_t backbone) {
+    fbb_.AddElement<int32_t>(Swarm::VT_BACKBONE, backbone, 0);
+  }
   void add_agents(flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<Agent>>> agents) {
     fbb_.AddOffset(Swarm::VT_AGENTS, agents);
   }
@@ -131,18 +139,22 @@ struct SwarmBuilder {
 
 inline flatbuffers::Offset<Swarm> CreateSwarm(
     flatbuffers::FlatBufferBuilder &_fbb,
+    int32_t backbone = 0,
     flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<Agent>>> agents = 0) {
   SwarmBuilder builder_(_fbb);
   builder_.add_agents(agents);
+  builder_.add_backbone(backbone);
   return builder_.Finish();
 }
 
 inline flatbuffers::Offset<Swarm> CreateSwarmDirect(
     flatbuffers::FlatBufferBuilder &_fbb,
+    int32_t backbone = 0,
     const std::vector<flatbuffers::Offset<Agent>> *agents = nullptr) {
   auto agents__ = agents ? _fbb.CreateVector<flatbuffers::Offset<Agent>>(*agents) : 0;
   return CreateSwarm(
       _fbb,
+      backbone,
       agents__);
 }
 

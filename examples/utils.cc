@@ -29,6 +29,14 @@ std::vector<mobile_node_t> utils::get_ue(Vector2d roi_means, Vector2d roi_vars) 
 
 }
 
+std::vector<mobile_node_t> utils::get_ue(std::vector<mobile_node_t> mobile_nodes, int backbone_nodes) {
+    std::vector<mobile_node_t> ue_nodes;
+    for(int i=backbone_nodes; i<mobile_nodes.size(); i++) {
+        ue_nodes.push_back(mobile_nodes[i]);
+    }
+    return ue_nodes;
+}
+
 std::vector<std::pair<mobile_node_t,mobile_node_t> > utils::get_farthest_pairs(std::vector<mobile_node_t> ue){
     std::vector<std::pair<mobile_node_t,mobile_node_t> > ue_pairs;
     // std::vector<mobile_node_t> ue_pair(2);

@@ -16,7 +16,7 @@ using namespace Eigen;
 
 class CoModel {
     public:
-        CoModel(std::vector<mobile_node_t> mobile_nodes, int sim_time, bool use_real_time);
+        CoModel(std::vector<mobile_node_t> mobile_nodes, int backbone_nodes, int sim_time, bool use_real_time);
         void run();
         std::vector<mobile_node_t> mobile_nodes;
         void report(std::ostream &);

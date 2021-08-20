@@ -17,34 +17,31 @@
 
 NS_LOG_COMPONENT_DEFINE ("ROSNS3Model");
 
-CoModel::CoModel(std::vector<mobile_node_t> mobile_nodes, int sim_time, bool use_real_time):
+CoModel::CoModel(std::vector<mobile_node_t> mobile_nodes, int backbone_nodes, int sim_time, bool use_real_time):
                 mobile_nodes(mobile_nodes),sim_time(sim_time), use_real_time(use_real_time) {
     pcap = true;
     print_routes = true;
     netanim = false;
     verbose = false;
-    n_nodes = mobile_nodes.size();
+    n_nodes = backbone_nodes;
     total_time = sim_time;
     if (use_real_time) {
         GlobalValue::Bind ("SimulatorImplementationType", StringValue (
                             "ns3::RealtimeSimulatorImpl"));
     }
-    // init roi_params
-    Vector2d roi_means(0,0);
-    Vector2d roi_vars(50,50);
 
-    ue_nodes = utils::get_ue(roi_means, roi_vars);
-    for (uint i=0;i<ue_nodes.size(); i++) {
-        NS_LOG_DEBUG("ue: "<<ue_nodes[i].id<<" "<<ue_nodes[i].position << " "<< ue_nodes[i].position.GetLength());
-    }
+    ue_nodes = utils::get_ue(mobile_nodes, backbone_nodes);
+    NS_LOG_DEBUG("Backbone nodes: "<< backbone_nodes << " mobile nodes: "<< mobile_nodes.size());
 
-    // create_backbone_nodes();
+    // for(int i=0;i<ue_nodes.size();i++)
+    //     NS_LOG_DEBUG("UE Locations: "<< "id: "<<i << " pose: "<< ue_nodes[i].position);
+
     create_backbone_devices();
     create_mobility_model();
     install_inet_stack();
     create_sta_nodes(ue_nodes);
+    install_ping_applications();
 
-    // install_ping_applications();
     // install_scen1();
 };
 
@@ -79,9 +76,6 @@ std::vector<neighborhood_t> CoModel::get_hop_info(){
                         neighbors.push_back(cand->GetId());
                     }
                 }
-                // NS_LOG_DEBUG();
-                
-                // neighbors.push_back(j);
             }
         }
         neighborhood_t neighborhood(i, neighbors);
