@@ -24,7 +24,7 @@ class CoModel {
         std::vector<neighborhood_t> get_hop_info();
         int total_time;
     private:
-        uint32_t backbone_nodes;
+        uint32_t n_backbone;
         NodeContainer backbone;
         NodeContainer stas;
         NodeContainer aps;
