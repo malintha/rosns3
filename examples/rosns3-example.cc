@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
 
         for (int i = 0; i < neighborhoods.size(); i++)
         {
-          neighborhood_t neighborhood = neighborhoods[i];
+        neighborhood_t neighborhood = neighborhoods[i];
           const std::vector<int> neighborhood_temp = neighborhood.neighbors;
           auto neighborhood_fb = CreateNeighborhoodDirect(builder, i, &neighborhood_temp);
           neighborhood_vec.push_back(neighborhood_fb);

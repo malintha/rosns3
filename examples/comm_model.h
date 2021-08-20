@@ -46,7 +46,7 @@ class CoModel {
         bool use_real_time;
         void create_backbone_nodes();
         void create_backbone_devices();
-        void install_applications();
+        void install_ping_applications();
         void install_inet_stack();
         void create_mobility_model();
         std::thread* simulator;
