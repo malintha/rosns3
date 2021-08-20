@@ -9,6 +9,9 @@ using namespace ns3;
 // commands:
 // NS_LOG="ROSNS3Server:ROSNS3Example:ROSNS3Model" ./waf --run rosns3-example --vis
 // ./client
+// experiment codes: 
+// tshark -T text -r ap--4-0.pcap -Y "udp && ip.dst == 10.0.0.6" > 4-0.txt 
+// wc -l 4-0.txt | awk '{ print $1 }'
 
 int main(int argc, char *argv[])
 {
@@ -28,7 +31,7 @@ int main(int argc, char *argv[])
     if (server.data_ready())
     {
       recvdata_t data = server.get_data();
-      int sim_time = 10;
+      int sim_time = 5;
       ssize_t n_bytes = data.n_bytes;
       char *buffer = data.buffer;
       char agent_data[n_bytes];

@@ -15,14 +15,11 @@
 #include "ns3/olsr-routing-protocol.h"
 // #include "utils.h"
 
-// #include "ns3/udp-echo-helper.h"
-
-
 NS_LOG_COMPONENT_DEFINE ("ROSNS3Model");
 
 CoModel::CoModel(std::vector<mobile_node_t> mobile_nodes, int sim_time, bool use_real_time):
                 mobile_nodes(mobile_nodes),sim_time(sim_time), use_real_time(use_real_time) {
-    pcap = false;
+    pcap = true;
     print_routes = true;
     netanim = false;
     verbose = false;
@@ -34,7 +31,7 @@ CoModel::CoModel(std::vector<mobile_node_t> mobile_nodes, int sim_time, bool use
     }
     // init roi_params
     Vector2d roi_means(0,0);
-    Vector2d roi_vars(20,20);
+    Vector2d roi_vars(50,50);
 
     ue_nodes = utils::get_ue(roi_means, roi_vars);
     for (uint i=0;i<ue_nodes.size(); i++) {
@@ -45,37 +42,38 @@ CoModel::CoModel(std::vector<mobile_node_t> mobile_nodes, int sim_time, bool use
     create_backbone_devices();
     create_mobility_model();
     install_inet_stack();
-
     create_sta_nodes(ue_nodes);
-    // NS_LOG_INFO("Created sta nodes");
 
     // install_applications();
-    install_scen1();
+    // install_scen1();
 };
 
 std::vector<neighborhood_t> CoModel::get_hop_info(){
     int hop_length = 1;
     std::vector<neighborhood_t> neighborhoods;
-
+    
+    ns3::Ipv4GlobalRoutingHelper::PopulateRoutingTables();
     // Ptr<OutputStreamWrapper> ss = Create<OutputStreamWrapper> ("aodv.routes1", std::ios::out);
-    for (uint32_t i = 0; i < n_nodes; i++)
+    // olsr_h.PrintRoutingTableAt(Seconds(sim_time-1), ss);
+    
+    for (uint32_t i = 0; i < backbone.GetN(); i++)
     {
         Ptr<Node> node = backbone.Get(i);
         // Ptr<aodv::RoutingProtocol> ipv4 = node->GetObject<aodv::RoutingProtocol> ();
+
         Ptr<olsr::RoutingProtocol> rp = node->GetObject<olsr::RoutingProtocol> ();
         // std::cout << "table length: "<<std::endl; 
         std::vector<olsr::RoutingTableEntry> table = rp->GetRoutingTableEntries();
         std::vector<int> neighbors;
         for(uint32_t j=0;j<table.size(); j++) {
             olsr::RoutingTableEntry entree = table[j];
+            Ipv4Address dest = entree.destAddr;
+            // dest.
             if(entree.distance <= hop_length) {
                 neighbors.push_back(j);
             }
-            // std::cout << "entree: "<<table[j].destAddr << " " << table[j].distance<<std::endl; 
         }
         neighborhood_t neighborhood(i, neighbors);
-        // neighborhood.id = i;
-        // neighborhood.neighbors = neighbors;
         neighborhoods.push_back(neighborhood);
     }
     return neighborhoods;
@@ -89,7 +87,7 @@ void CoModel::run() {
     if (print_routes)
     {
         Ptr<OutputStreamWrapper> routingStream = Create<OutputStreamWrapper> ("aodv.routes", std::ios::out);
-        aodv_h.PrintRoutingTableAllAt (Seconds (sim_time-1), routingStream);
+        olsr_h.PrintRoutingTableAllAt (Seconds (sim_time-1), routingStream);
     }
         Simulator::Stop (Seconds (sim_time));        
         Simulator::Run ();
@@ -138,10 +136,6 @@ void CoModel::create_mobility_model() {
 
 void CoModel::report(std::ostream &) {};
 
-void CoModel::create_backbone_nodes() {
-
-};
-
 void CoModel::install_inet_stack() {
     // you can configure AODV attributes here using aodv.Set(name, value)
     
@@ -160,7 +154,6 @@ void CoModel::install_inet_stack() {
 
 };
 
-
 // create the sta nodes and the ap nodes
 void CoModel::create_sta_nodes(std::vector<mobile_node_t> ue_nodes) {
     stas.Create(ue_nodes.size());
@@ -176,6 +169,8 @@ void CoModel::create_sta_nodes(std::vector<mobile_node_t> ue_nodes) {
     wifiChannel.SetPropagationDelay ("ns3::ConstantSpeedPropagationDelayModel");
 
     wifiPhy.SetChannel (wifiChannel.Create ());
+    // AsciiTraceHelper ascii;
+    // wifiPhy.EnableAsciiAll(ascii.CreateFileStream ("trace.tr"));
     Ssid ssid = Ssid ("wifi-infra");
     wifi_infra.SetRemoteStationManager ("ns3::ArfWifiManager");
     WifiMacHelper mac_infra;
@@ -188,7 +183,7 @@ void CoModel::create_sta_nodes(std::vector<mobile_node_t> ue_nodes) {
     aps = backbone;
     mac_infra.SetType("ns3::ApWifiMac", "Ssid", SsidValue (ssid));
     NetDeviceContainer ap_devices = wifi_infra.Install(wifiPhy, mac_infra, aps);
-    
+    // ap_devices.Get(0)->Tra
     NS_LOG_INFO("setup infra devices");
     // add ipv4 to infra nodes
 
@@ -200,7 +195,7 @@ void CoModel::create_sta_nodes(std::vector<mobile_node_t> ue_nodes) {
     // stack.Install(aps);
     interfaces_ap = address.Assign(infraDevices);
     // interfaces_sta = address.Assign(sta_devices);
-
+    
     // constant mobility for sta nodes
     MobilityHelper mobility_sta;
 
@@ -220,10 +215,13 @@ void CoModel::create_sta_nodes(std::vector<mobile_node_t> ue_nodes) {
     mobility_sta.Install(stas);
     NS_LOG_DEBUG("Created STA and AP nodes.");
 
+    // enable packet capturing for sta nodes
     if (pcap)
     {
         NS_LOG_DEBUG("Enabled packet capturing.");
-        wifiPhy.EnablePcapAll (std::string ("ap-"));
+        // wifiPhy.EnablePcapAll (std::string ("ap-"));
+        for (int i=0;i<sta_devices.GetN(); i++)
+            wifiPhy.EnablePcap("sta", sta_devices.Get (i), false);
     }
 
 }
@@ -283,75 +281,115 @@ void CoModel::create_backbone_devices() {
 
 // install applications on sta nodes
 void CoModel::install_applications() {
-    // address of the last sta
-    // NS_LOG_DEBUG("Creating UDP Applications");
+    int end_buff = 1;
+    int start = 1;
+    int total_time = sim_time - (end_buff + start);
+    NS_LOG_DEBUG("Creating UDP Applications");
     
-    // Config::SetDefault ("ns3::OnOffApplication::PacketSize", StringValue ("1472"));
-    // Config::SetDefault ("ns3::OnOffApplication::DataRate", StringValue ("1000kb/s"));
+    Config::SetDefault ("ns3::OnOffApplication::PacketSize", StringValue ("1472"));
+    Config::SetDefault ("ns3::OnOffApplication::DataRate", StringValue ("100Mb/s"));
     
-    // uint16_t port = 9;
-    // Ptr<Node> appSource = stas.Get(0); //10.0.0.3
-    // Ptr<Node> appSink = stas.Get(4); //10.0.0.(3+4)
-    // Ipv4Address remoteAddr = appSink->GetObject<Ipv4> ()->GetAddress (1, 0).GetLocal ();
-    // OnOffHelper onoff ("ns3::UdpSocketFactory",
-    //                  Address (InetSocketAddress (remoteAddr, port)));  
-
-    // ApplicationContainer apps = onoff.Install (appSource);
-    // apps.Start (Seconds (1));
-    // apps.Stop (Seconds (sim_time) - Seconds (1));
-
-    // PacketSinkHelper sink ("ns3::UdpSocketFactory",
-    //                      InetSocketAddress (Ipv4Address::GetAny (), port));
-    // apps = sink.Install (appSink);
-    // apps.Start (Seconds (1));
-
-
-    Ipv4Address remoteAddr("10.0.0.10");
-    V4PingHelper ping(remoteAddr);
-    // V4PingHelper ping(interfaces_bb.GetAddress (2));
-
-    ping.SetAttribute("Verbose", BooleanValue(verbose));
-    const Time t = Seconds(1);
-    ping.SetAttribute("Interval", TimeValue(t));
-
-    // // install ping app on source sta
+    uint16_t port = 9;
+    Ptr<Node> source_node = stas.Get(0); //10.0.0.5
+    Ptr<Node> sink_node = stas.Get(2); //10.0.0.6
+    Ipv4Address remoteAddr = sink_node->GetObject<Ipv4> ()->GetAddress (1, 0).GetLocal ();
+    OnOffHelper onoff ("ns3::UdpSocketFactory",
+                     Address (InetSocketAddress (remoteAddr, port)));  
+    onoff.SetAttribute("MaxBytes",ns3::UintegerValue(5e6));
     ApplicationContainer apps;
-    Ptr<Node> source = NodeList::GetNode (n_nodes);
+    apps.Add( onoff.Install (source_node));
+    
+    apps.Start (Seconds (start));
+    apps.Stop(Seconds(sim_time - end_buff));
 
-    apps.Add(ping.Install(source));
-    Ipv4Address sourceAdd = source->GetObject<Ipv4> ()->GetAddress (1, 0).GetLocal ();
-    NS_LOG_DEBUG("Ping source: "<< sourceAdd);
+    PacketSinkHelper sink ("ns3::UdpSocketFactory",
+                         InetSocketAddress (Ipv4Address::GetAny (), port));
 
-    apps.Start(Seconds(3));
-    apps.Stop(Seconds(sim_time) - Seconds(0.5));
+
+    apps.Add(sink.Install (sink_node));
+    
+    apps.Start (Seconds (start));
+    apps.Stop(Seconds(sim_time - end_buff));
+    Ipv4Address source_add = source_node->GetObject<Ipv4> ()->GetAddress (1, 0).GetLocal ();
+    Ipv4Address dest_add = sink_node->GetObject<Ipv4> ()->GetAddress (1, 0).GetLocal ();
+    NS_LOG_DEBUG("UDP: source: "<< source_add << " dest: "<<dest_add);
+
+    // Ipv4Address remoteAddr("10.0.0.10");
+    // V4PingHelper ping(remoteAddr);
+    // // V4PingHelper ping(interfaces_bb.GetAddress (2));
+
+    // ping.SetAttribute("Verbose", BooleanValue(verbose));
+    // const Time t = Seconds(1);
+    // ping.SetAttribute("Interval", TimeValue(t));
+
+    // // // install ping app on source sta
+    // ApplicationContainer apps;
+    // Ptr<Node> source = NodeList::GetNode (n_nodes);
+
+    // apps.Add(ping.Install(source));
+    // Ipv4Address sourceAdd = source->GetObject<Ipv4> ()->GetAddress (1, 0).GetLocal ();
+    // NS_LOG_DEBUG("Ping source: "<< sourceAdd);
+
+    // apps.Start(Seconds(3));
+
 
     NS_LOG_DEBUG("Installed UDP applications.");
 
 };
 
-// establish ping between the farthest and most centered sta nodes
+// experiments:
+// establish udp between the farthest and most centered sta nodes
 void CoModel::install_scen1() {
-    // install ping between the farthest nodes
-    ApplicationContainer ping_apps;
+    // install udp between the farthest nodes
+    uint16_t port = 9;
+    int end_buff = 1;
+    int start = 1;
+    
+    Config::SetDefault ("ns3::OnOffApplication::PacketSize", StringValue ("1472"));
+    Config::SetDefault ("ns3::OnOffApplication::DataRate", StringValue ("100Mb/s"));
+
     uint n_ue = stas.GetN();
-    for(uint i=0; i<n_ue/2; i++) {
-        uint dest_id = n_ue/2 + i;
-        Ptr<Node> source = stas.Get (i);
-        Ipv4Address source_add = source->GetObject<Ipv4> ()->GetAddress (1, 0).GetLocal ();
-        Ptr<Node> destination = stas.Get (dest_id);
-        Ipv4Address dest_add = destination->GetObject<Ipv4> ()->GetAddress (1, 0).GetLocal ();
+    // for(uint i=0; i<n_ue/2; i++) {
+        // uint dest_id = n_ue/2 + i;
+        Ptr<Node> source1 = stas.Get (0);
+        Ptr<Node> destination1 = stas.Get (2);
+        Ipv4Address source_add1 = source1->GetObject<Ipv4> ()->GetAddress (1, 0).GetLocal ();
+        Ipv4Address dest_add1 = destination1->GetObject<Ipv4> ()->GetAddress (1, 0).GetLocal ();
+        OnOffHelper onoff ("ns3::UdpSocketFactory", Address (InetSocketAddress (dest_add1, port)));
+        ApplicationContainer udp_apps;
+        udp_apps.Add(onoff.Install (source1));
+        udp_apps.Start(Seconds(start));
+        udp_apps.Stop(Seconds(sim_time - end_buff));
+        
+        PacketSinkHelper sink ("ns3::UdpSocketFactory", InetSocketAddress (Ipv4Address::GetAny (), port));
+        udp_apps.Add(sink.Install(destination1));
+        udp_apps.Start(Seconds(start));
+        udp_apps.Stop(Seconds(sim_time - end_buff));
 
-        V4PingHelper ping(dest_add);
-        ping.SetAttribute("Verbose", BooleanValue(verbose));
-        const Time t = Seconds(0.5);
-        ping.SetAttribute("Interval", TimeValue(t));
-        // // install ping app on source sta
-        ping_apps.Add(ping.Install(source));
-        NS_LOG_DEBUG("Ping source: "<< source_add << " dest: "<<dest_add);
+        // Ptr<Node> source2 = stas.Get (1);
 
-    }
-    ping_apps.Start(Seconds(1));
-    ping_apps.Stop(Seconds(sim_time) - Seconds(1));
+        // Ptr<Node> destination2 = stas.Get (2);
+
+        // Ipv4Address source_add2 = source2->GetObject<Ipv4> ()->GetAddress (1, 0).GetLocal ();
+
+        // Ipv4Address dest_add2 = destination2->GetObject<Ipv4> ()->GetAddress (1, 0).GetLocal ();
+
+        // // install apps
+       
+
+        // onoff = ("ns3::UdpSocketFactory", Address (InetSocketAddress (dest_add2, port)));
+
+        // udp_apps.Add(onoff.Install (source));
+
+        
+        // udp_apps = sink.Install(destination);
+        // udp_apps.Start(Seconds(start));
+        // udp_apps.Stop(Seconds(sim_time - end_buff));
+        
+        // NS_LOG_DEBUG("Ping source: "<< i+n_nodes <<" "<< source_add << " dest: "<<dest_id+n_nodes <<" "<<dest_add);
+    // }
+
+    NS_LOG_DEBUG("Install UDP applications");
 
 }
 
