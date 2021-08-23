@@ -51,7 +51,7 @@ std::vector<neighborhood_t> CoModel::get_hop_info(){
     
     ns3::Ipv4GlobalRoutingHelper::PopulateRoutingTables();
     
-    for (uint32_t i = 0; i < backbone.GetN(); i++)
+    for (uint32_t i = 0; i < n_backbone; i++)
     {
         Ptr<Node> node = backbone.Get(i);
         // Ptr<aodv::RoutingProtocol> ipv4 = node->GetObject<aodv::RoutingProtocol> ();
@@ -161,8 +161,11 @@ void CoModel::create_sta_nodes(std::vector<mobile_node_t> ue_nodes) {
     YansWifiChannelHelper wifiChannel = YansWifiChannelHelper::Default ();
     YansWifiPhyHelper wifiPhy = YansWifiPhyHelper::Default ();
 
+    
+
     wifiChannel.AddPropagationLoss("ns3::LogDistancePropagationLossModel", "Exponent", ns3::DoubleValue(2.52),
                                     "ReferenceLoss", ns3::DoubleValue(-53));
+                            
     wifiChannel.AddPropagationLoss("ns3::NakagamiPropagationLossModel","m0",ns3::DoubleValue(1),
                                     "m1",ns3::DoubleValue(1),"m2",ns3::DoubleValue(1));
     wifiChannel.SetPropagationDelay ("ns3::ConstantSpeedPropagationDelayModel");

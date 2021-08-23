@@ -56,7 +56,5 @@ class CoModel {
         void install_scen2();
         void install_scen3();
 
-        // for running experiments
-        // void 
 
 };
