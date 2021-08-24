@@ -1,0 +1,10 @@
+table Neighborhood {
+    id:int;    
+    neighbors:[int];
+}
+
+table Neighborhoods {
+    neighborhood:[Neighborhood];
+}
+
+root_type Neighborhoods;
