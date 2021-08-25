@@ -1,5 +1,16 @@
 <launch>
+<!-- port number of the rosns3 server -->
     <param name="rosns3_server_port" value="28500" />
+
+<!-- frequency to poll the server to obtain information -->
+    <param name="rosns3_server_frequency" value="0.5" />
+
+<!-- number of robot (backbone + UE) nodes in the network -->
+    <param name="rosns3_server_n_robots" value="8" />
+
+<!-- number of backbone nodes in the network -->
+    <param name="rosns3_server_n_backbone" value="5" />
+
     <env name="ROSCONSOLE_CONFIG_FILE" value="$(find rosns3_client)/config/custom_rosconsole.conf"/>
     <node name="rosns3_client" pkg="rosns3_client" type="rosns3_client" output="screen"/>
     

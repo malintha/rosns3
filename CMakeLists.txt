@@ -16,21 +16,29 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   std_msgs
+  simulator_utils
 )
 
-catkin_package()
+catkin_package(
+  INCLUDE_DIRS include
+  LIBRARIES ${PROJECT_NAME}
+)
 
 
 include_directories(
+  include/${PROJECT_NAME}
+  include/messages
   ${catkin_INCLUDE_DIRS}
-  # include
-
   )
-
+ 
 add_executable(${PROJECT_NAME}     
 src/rosns3_client.cpp
+src/utils.cpp
+src/client.cpp
 )
 
-target_link_libraries(${PROJECT_NAME}
-   ${catkin_LIBRARIES}
- )
+target_link_libraries(
+    ${PROJECT_NAME}
+    ${catkin_LIBRARIES}     
+)  
+
