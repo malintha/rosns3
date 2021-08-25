@@ -20,12 +20,10 @@ Client::Client(clientutils::params_t params, ros::NodeHandle n) : params(params)
     get_nodes();
 }
 
-void Client::send_recv_data(uint8_t *data, uint32_t data_size)
+void Client::send_recv_data()
 {
-    client_busy = true;
-
+    this->client_busy = true;
     socklen_t len;
-
     struct sockaddr_in servaddr;
     memset(&servaddr, 0, sizeof(servaddr));
 
@@ -34,7 +32,7 @@ void Client::send_recv_data(uint8_t *data, uint32_t data_size)
     servaddr.sin_port = htons(params.port);
     servaddr.sin_addr.s_addr = INADDR_ANY;
 
-    sendto(sockfd, builder.GetBufferPointer(), builder.GetSize(),
+    sendto(sockfd, data, data_size,
            MSG_CONFIRM, (const struct sockaddr *)&servaddr,
            sizeof(servaddr));
     ROS_DEBUG_STREAM("Sent " << data_size << " bytes of data to the NS3 server.");
@@ -62,8 +60,9 @@ void Client::send_recv_data(uint8_t *data, uint32_t data_size)
         }
         printf("\n");
     }
-    client_busy = false;
-    close(sockfd);
+    this->client_busy = false;
+
+    // close(sockfd);
 }
 
 void Client::run()
@@ -83,41 +82,43 @@ void Client::get_nodes()
     ROS_DEBUG_STREAM("Created " << params.n_robots << " nodes and subscribers.");
 }
 
-agents_t Client::get_agent_states()
-{
-    agents_t agents;
-    for (int i = 0; i < params.n_robots; i++)
-    {
-        simulator_utils::Waypoint state = nodes[i].get_state();
-        auto pos = Vec3(state.position.x, state.position.y, state.position.z);
-        auto id = i;
-        auto agent = CreateAgent(builder, &pos, id);
-        agents.push_back(agent);
-    }
-    return agents;
-}
-
 void Client::iteration(const ros::TimerEvent &e)
 {
-    ROS_DEBUG_STREAM("Iteration. Client busy: " << client_busy);
-
     //get data from subscribers
-    agents_t agents = get_agent_states();
-
-    //create the swarm object
-    auto agents_ = builder.CreateVector(agents);
-    auto swarm = CreateSwarm(builder, params.n_backbone, agents_);
-    builder.Finish(swarm);
-
-    // send data to the server in a non-blocking call (if the previous call to the
-    // server is completed), wait for the response. Write the response to the
-    // variable
     if (!client_busy)
     {
-        auto con_thread = [this]()
+        ROS_DEBUG_STREAM("Iteration performing.");
+
+        flatbuffers::FlatBufferBuilder builder;
+        agents_t agents;
+
+        for (int i = 0; i < params.n_robots; i++)
         {
-            this->send_recv_data(this->builder.GetBufferPointer(), this->builder.GetSize());
+            simulator_utils::Waypoint state = nodes[i].get_state();
+            auto pos = Vec3(state.position.x, state.position.y, state.position.z);
+            auto id = i;
+            auto agent = CreateAgent(builder, &pos, id);
+            agents.push_back(agent);
+        }
+
+        //create the swarm object
+        auto agents_ = builder.CreateVector(agents);
+        auto swarm = CreateSwarm(builder, params.n_backbone, agents_);
+        builder.Finish(swarm);
+        data = builder.GetBufferPointer();
+        data_size = builder.GetSize();
+        // send data to the server in a non-blocking call (if the previous call to the
+        // server is completed), wait for the response. Write the response to the
+        // variable
+
+        auto con = [this]()
+        {
+            this->send_recv_data();
         };
-        new std::thread(con_thread);
+        new std::thread(con);
+    }
+    else
+    {
+        ROS_DEBUG_STREAM("Iteration skipping. Client busy");
     }
 }

@@ -14,14 +14,15 @@ private:
     utils::params_t params;
     ros::NodeHandle n;
     utils::nodes_t nodes;
-    flatbuffers::FlatBufferBuilder builder;
     int sockfd;
     bool client_busy;
+    uint8_t* data;
+    uint32_t data_size;
 
     void iteration(const ros::TimerEvent &e);
-    void send_recv_data(uint8_t *data, uint32_t data_size);
+    void send_recv_data();
     void get_nodes();
-    agents_t get_agent_states();
+    void get_agent_states();
 
 public:
     Client(utils::params_t, ros::NodeHandle);
