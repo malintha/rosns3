@@ -18,6 +18,7 @@ private:
     bool client_busy;
     uint8_t* data;
     uint32_t data_size;
+    std::vector<utils::neighborhood_t> neighborhoods;
 
     void iteration(const ros::TimerEvent &e);
     void send_recv_data();
@@ -27,4 +28,6 @@ private:
 public:
     Client(utils::params_t, ros::NodeHandle);
     void run();
+    std::vector<utils::neighborhood_t> get_neighborhoods();
+    
 };

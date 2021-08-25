@@ -22,7 +22,7 @@ Client::Client(clientutils::params_t params, ros::NodeHandle n) : params(params)
 
 void Client::send_recv_data()
 {
-    this->client_busy = true;
+    client_busy = true;
     socklen_t len;
     struct sockaddr_in servaddr;
     memset(&servaddr, 0, sizeof(servaddr));
@@ -46,24 +46,35 @@ void Client::send_recv_data()
     char agent_data[n_bytes];
     std::memcpy(agent_data, buffer, sizeof(agent_data));
     ROS_DEBUG_STREAM("Received " << sizeof(agent_data) << " bytes.");
-    // deserialize recieved data
-    auto neighborhoods_temp = GetNeighborhoods(agent_data);
-    auto neighborhoods = neighborhoods_temp->neighborhood();
-    for (int i = 0; i < neighborhoods->size(); i++)
+
+    // deserialize recieved data and copy them to global neighborhoods variable
+    auto nbrhoods_temp = GetNeighborhoods(agent_data);
+    auto nbrhoods_fb = nbrhoods_temp->neighborhood();
+    neighborhoods.clear();
+    for (int i = 0; i < nbrhoods_fb->size(); i++)
     {
-        printf("id: %d \t", neighborhoods->Get(i)->id());
-        const auto neighbors = neighborhoods->Get(i)->neighbors();
+        std::vector<int> nbrs;
+        int n_id = nbrhoods_fb->Get(i)->id();
+        const auto neighbors = nbrhoods_fb->Get(i)->neighbors();
         for (int j = 0; j < neighbors->size(); j++)
         {
-            // auto id = neighbors->Get(j);
-            printf("%d ", neighbors->Get(j));
+            auto id = neighbors->Get(j);
+            nbrs.push_back(id);
         }
-        printf("\n");
+        clientutils::neighborhood_t nbrhood {.id = n_id, .neighbors = nbrs};
+        this->neighborhoods.push_back(nbrhood);
     }
-    this->client_busy = false;
+    ROS_DEBUG_STREAM("Deserialized routing table data.");
+
+    client_busy = false;
 
     // close(sockfd);
 }
+
+std::vector<utils::neighborhood_t> Client::get_neighborhoods() {
+    return this->neighborhoods;
+}
+
 
 void Client::run()
 {
@@ -121,4 +132,9 @@ void Client::iteration(const ros::TimerEvent &e)
     {
         ROS_DEBUG_STREAM("Iteration skipping. Client busy");
     }
+
+    // publish current neighborhoods to a service
+    
+    ROS_DEBUG_STREAM("Neighborhoods: "<<neighborhoods.size());
+
 }

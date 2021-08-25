@@ -23,4 +23,11 @@ namespace clientutils
 
     params_t load_params(ros::NodeHandle);
 
+
+    typedef struct neighborhood_t {
+        int id;
+        std::vector<int> neighbors;
+        // neighborhood_t(int id, std::vector<int> neighbors);
+    } neighborhood_t;
+
 };
