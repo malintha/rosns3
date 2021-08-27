@@ -19,7 +19,7 @@ namespace clientutils
         std::string topic_prefix;
     } params_t;
 
-    typedef std::vector<Node> nodes_t;
+    typedef std::vector<Node*> nodes_t;
 
     params_t load_params(ros::NodeHandle);
 

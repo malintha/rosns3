@@ -14,3 +14,5 @@ clientutils::params_t clientutils::load_params(ros::NodeHandle nh) {
     return params;
 };
 
+// clientutils::Node::Node(int id, ros::NodeHandle n):Drone(id, n) {
+// };
