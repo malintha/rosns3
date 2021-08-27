@@ -3,6 +3,8 @@
 #include "messages/states_generated.h"
 #include "comm_model.h"
 #include "messages/neighborhoods_generated.h"
+#include "messages/network_routing_generated.h"
+#include "ns3/olsr-routing-protocol.h"
 
 using namespace ns3;
 
@@ -69,27 +71,79 @@ int main(int argc, char *argv[])
       {
         NS_LOG_INFO("Getting updated routing tables at : " << Simulator::Now().GetSeconds());
 
-        std::vector<neighborhood_t> neighborhoods = model->get_hop_info();
-
-        // build the serializable neighborhood object
+      {
+        // build network routing object
         flatbuffers::FlatBufferBuilder builder;
-        std::vector<flatbuffers::Offset<Neighborhood>> neighborhood_vec;
+        std::vector<flatbuffers::Offset<NetworkNode>> swarm_network;
+        NodeContainer backbone_ = model->backbone;
 
-        for (int i = 0; i < neighborhoods.size(); i++)
+        for (uint32_t i = 0; i < backbone_.GetN(); i++)
         {
-        neighborhood_t neighborhood = neighborhoods[i];
-          const std::vector<int> neighbors = neighborhood.neighbors;
-          auto neighborhood_fb = CreateNeighborhoodDirect(builder, i, &neighbors);
-          neighborhood_vec.push_back(neighborhood_fb);
+          Ptr<Node> node = backbone_.Get(i);
+          Ipv4Address source = node->GetObject<Ipv4>()->GetAddress(2, 0).GetLocal();
+
+          Ptr<olsr::RoutingProtocol> rp = node->GetObject<olsr::RoutingProtocol>();
+          std::vector<olsr::RoutingTableEntry> table = rp->GetRoutingTableEntries();
+          // NS_LOG_DEBUG("###: i "<<i<< " ip: "<<source);
+
+          // for node routing table
+          std::vector<flatbuffers::Offset<Entree>> table_rt;
+          
+          // select backbone node entrees from olsr table and create corresponding fb routing table entry
+          for (uint32_t j = 0; j < table.size(); j++)
+          {
+            olsr::RoutingTableEntry entree = table[j];
+            Ipv4Address dest = entree.destAddr;
+            // NS_LOG_DEBUG("source: "<< i<<" table len: "<<table.size()<<" dest: "<<dest);
+            const int dest_id = model->getBackboneId(dest);
+            if (dest_id != -1)
+              {
+                const int dist = entree.distance;
+                auto entry_rt = CreateEntree(builder, dest_id, entree.distance);
+                table_rt.push_back(entry_rt);
+                // NS_LOG_DEBUG("source: "<< i<<" destination: "<<dest_id<<" dist: "<<dist);
+              }
+          }
+          // create fb network node with routing table and node id
+          auto routingtable_fb = builder.CreateVector(table_rt);
+          auto network_node = CreateNetworkNode(builder, i, routingtable_fb);
+          swarm_network.push_back(network_node);
         }
-        auto neighborhoods_fb = builder.CreateVector(neighborhood_vec);
-        auto neighborhoods_s = CreateNeighborhoods(builder, neighborhoods_fb);
-        builder.Finish(neighborhoods_s);
-        
+        auto swarm_network_fb = builder.CreateVector(swarm_network);
+        auto swarmnetwork = CreateSwarmNetwork(builder,swarm_network_fb);  
+        builder.Finish(swarmnetwork);
+
+        NS_LOG_INFO("swarmnetwork: "<<swarm_network.size());
         // send the neighborhoods to udp client
         uint8_t* data = builder.GetBufferPointer();
         uint32_t data_size = builder.GetSize();
         server.send_data(data, data_size);
+      }
+      
+      // {
+        // std::vector<neighborhood_t> neighborhoods = model->get_hop_info();
+        // build the serializable neighborhood object
+        // flatbuffers::FlatBufferBuilder builder;
+        // std::vector<flatbuffers::Offset<Neighborhood>> neighborhood_vec;
+
+        // for (int i = 0; i < neighborhoods.size(); i++)
+        // {
+        // neighborhood_t neighborhood = neighborhoods[i];
+        //   const std::vector<int> neighbors = neighborhood.neighbors;
+        //   auto neighborhood_fb = CreateNeighborhoodDirect(builder, i, &neighbors);
+        //   neighborhood_vec.push_back(neighborhood_fb);
+        // }
+        // auto neighborhoods_fb = builder.CreateVector(neighborhood_vec);
+        // auto neighborhoods_s = CreateNeighborhoods(builder, neighborhoods_fb);
+        // builder.Finish(neighborhoods_s);
+        // send the neighborhoods to udp client
+        // uint8_t* data = builder.GetBufferPointer();
+        // uint32_t data_size = builder.GetSize();
+        // server.send_data(data, data_size);
+      // }
+
+
+
       }
     }
 

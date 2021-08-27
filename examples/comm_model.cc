@@ -52,13 +52,17 @@ int CoModel::getBackboneId(Ipv4Address dest)
     for (uint32_t k = 0; k < backbone.GetN(); k++)
     {
         Ptr<Node> cand = backbone.Get(k);
-        Ipv4Address cand_add = cand->GetObject<Ipv4>()->GetAddress(1, 0).GetLocal();
+        Ipv4Address cand_add = cand->GetObject<Ipv4>()->GetAddress(2, 0).GetLocal();
+        // NS_LOG_DEBUG("backbone "<<cand_add<<" id "<<k<<" dest: "<<dest << " "<< dest.IsEqual(cand_add));
         if (dest.IsEqual(cand_add))
         {
             return k;
         }
-        return -1;
+        else {
+            continue;
+        }
     }
+    return -1;
 }
 
 std::vector<neighborhood_t> CoModel::get_hop_info()
