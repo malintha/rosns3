@@ -7,6 +7,7 @@
 #include "ns3/v4ping-helper.h"
 #include "ns3/aodv-module.h"
 #include "ns3/olsr-helper.h"
+#include "messages/network_routing_generated.h"
 
 // #include "ns3/udp-echo-helper.h"
 #include "utils.h"
@@ -23,6 +24,8 @@ class CoModel {
         void update_mobility_model(std::vector<mobile_node_t> mobile_nodes);
         std::vector<neighborhood_t> get_hop_info();
         int total_time;
+        
+
     private:
         uint32_t n_backbone;
         NodeContainer backbone;
@@ -55,6 +58,9 @@ class CoModel {
         void install_scen1();
         void install_scen2();
         void install_scen3();
+        
+        //experiments
+        int getBackboneId(Ipv4Address dest);
 
 
 };

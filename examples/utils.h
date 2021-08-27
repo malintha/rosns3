@@ -12,4 +12,5 @@ namespace utils {
 
     std::vector<std::pair<mobile_node_t,mobile_node_t> > get_farthest_pairs(std::vector<mobile_node_t> ue);
     std::vector<mobile_node_t> get_ue(std::vector<mobile_node_t> mobile_nodes, int backbone_nodes);
+    void get_hop_stats(std::vector<int> hops);
 }

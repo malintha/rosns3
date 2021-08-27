@@ -1,0 +1,15 @@
+table Entree {
+    destination:int;
+    distance: int;
+}
+
+table NetworkNode {
+    node:int;
+    routingtable:[Entree];
+}
+
+table SwarmNetwork {
+    nodes:[NetworkNode];
+}
+
+root_type SwarmNetwork;
