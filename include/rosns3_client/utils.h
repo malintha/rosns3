@@ -23,6 +23,7 @@ namespace clientutils
 
     params_t load_params(ros::NodeHandle);
 
+    double get_avg_dist(std::vector<clientutils::Node*> nodes);
 
     typedef struct neighborhood_t {
         int id;
@@ -30,4 +31,5 @@ namespace clientutils
         // neighborhood_t(int id, std::vector<int> neighbors);
     } neighborhood_t;
 
+    void write_to_file(std::vector<int> hops, double avg_dis);
 };
