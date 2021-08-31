@@ -3,7 +3,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
-#include "neighborhoods_generated.h"
+// #include "neighborhoods_generated.h"
 #include <thread>
 #include <unistd.h>
 #include <iostream>
@@ -53,10 +53,6 @@ recv_data_t *Client::send_recv_data()
     // close(sockfd);
 }
 
-std::vector<utils::neighborhood_t> Client::get_neighborhoods()
-{
-    return this->neighborhoods;
-}
 
 void Client::run()
 {
@@ -70,7 +66,7 @@ void Client::set_nodes()
     // nodes.clear();
     for (int i = 0; i < params.n_robots; i++)
     {
-        utils::Node *node = new utils::Node(i + 1, n);
+        utils::Node *node = new utils::Node(i + 1, n, params.frequency);
         nodes.push_back(node);
     }
     ROS_DEBUG_STREAM("Created " << params.n_robots << " nodes and subscribers.");
@@ -108,8 +104,7 @@ void Client::iteration(const ros::TimerEvent &e)
         auto con = [this]()
         {
             this->send_recv_data();
-            // this->log_info();
-            this->calc_plot_info();
+            this->set_network();
         };
         new std::thread(con);
     }
@@ -118,21 +113,40 @@ void Client::iteration(const ros::TimerEvent &e)
         ROS_DEBUG_STREAM("Iteration skipping. Client busy");
     }
 
-    // publish current neighborhoods to a service
+    // publish current routing nodes
+    for(clientutils::Node* n: nodes) {
+        n->publish_routing_nodes();
+        ROS_DEBUG_STREAM("Published routing tables.");
+    }
 }
 
-// calculate the average neighborhood hops against distance
-void Client::calc_plot_info()
-{
-
+void Client::set_network() {
     char recvd_data[n_bytes];
     std::memcpy(recvd_data, recv_buffer, sizeof(recvd_data));
     ROS_DEBUG_STREAM("Received " << sizeof(recvd_data) << " bytes.");
 
     // receive the router tables as is from server
     auto swarmnetwork = GetSwarmNetwork(recvd_data);
-    auto network_nodes = swarmnetwork->nodes();
+    // auto network_nodes = swarmnetwork->nodes();
+    this->network = swarmnetwork->nodes();
+    for(int i=0; i<nodes.size(); i++) {
+        std::vector<int> routing_nodes;
+        auto routingtable = network->Get(i)->routingtable();
+        for (int j=0;j<routingtable->size(); j++) {
+            auto entry = routingtable->Get(j);
+            int hops = entry->distance();
+            if (hops == params.hops_k) {
+                routing_nodes.push_back(entry->destination());
+            }
+        }
+        nodes[i]->set_routing_nodes(routing_nodes);
+    }
+}
 
+// calculate the average neighborhood hops against distance
+void Client::calc_plot_info()
+{
+    auto network_nodes = this->network;
     // get avg hops between the robots in the network
     std::vector<int> hops;
     std::vector<int> entries;
@@ -161,7 +175,6 @@ void Client::calc_plot_info()
             }
         }
     }
-
     //get avg distance between nodes
     double avg_dis = clientutils::get_avg_dist(nodes);
     clientutils::write_to_file(hops, avg_dis);
@@ -172,20 +185,3 @@ void Client::calc_plot_info()
     // }
     // std::cout << std::endl;
 }
-
-// void Client::log_info()
-// {
-//     // calculate the mean/min/max agents and log with avg distance
-//     double tot_nbrs;
-//     int min_nbrs = params.n_backbone;
-//     int max_nbrs = 0;
-//     for (int i = 0; i < neighborhoods.size(); i++)
-//     {
-//         tot_nbrs += neighborhoods[i].neighbors.size();
-//         if (neighborhoods[i].neighbors.size() < min_nbrs)
-//             min_nbrs = neighborhoods[i].neighbors.size();
-//         if (neighborhoods[i].neighbors.size() > max_nbrs)
-//             max_nbrs = neighborhoods[i].neighbors.size();
-//     }
-
-// }

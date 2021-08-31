@@ -7,7 +7,14 @@ namespace clientutils
     class Node : public Drone
     {
         public:
-        Node(int id, ros::NodeHandle n) : Drone(id, n) {};
+            Node(int id, ros::NodeHandle n, double pub_freq);
+            void set_routing_nodes(std::vector<int> routing_nodes);
+            void publish_routing_nodes();
+
+        private:
+            double pub_frequency;
+            ros::Publisher routing_pub;
+            std::vector<int> routing_nodes;
     };
 
     typedef struct params
@@ -17,6 +24,7 @@ namespace clientutils
         int n_robots;
         int n_backbone;
         std::string topic_prefix;
+        int hops_k;
     } params_t;
 
     typedef std::vector<Node*> nodes_t;

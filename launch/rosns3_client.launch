@@ -15,6 +15,8 @@
 <!-- number of backbone nodes in the network -->
     <param name="rosns3_server_n_backbone" value="8" />
 
+    <param name="hops_k" value="1" />
+
     <env name="ROSCONSOLE_CONFIG_FILE" value="$(find rosns3_client)/config/custom_rosconsole.conf"/>
     <node name="rosns3_client" pkg="rosns3_client" type="rosns3_client" output="screen"/>
 

@@ -3,6 +3,7 @@
 #include <ros/console.h>
 #include <strings.h>
 #include <fstream>
+#include "std_msgs/Int16MultiArray.h"
 
 // namespace utils = clientutils;
 // using namespace utils;
@@ -14,6 +15,7 @@ clientutils::params_t clientutils::load_params(ros::NodeHandle nh) {
     nh.getParam("rosns3_server_n_robots", params.n_robots);
     nh.getParam("rosns3_server_n_backbone", params.n_backbone);
     nh.getParam("rosns3_server_topic_prefix", params.topic_prefix);
+    nh.getParam("hops_k", params.hops_k);
 
     return params;
 };
@@ -57,4 +59,26 @@ void clientutils::write_to_file(std::vector<int> hops, double avg_dis) {
     }
 
     outss.close();
+}
+
+clientutils::Node::Node(int id, ros::NodeHandle n, double pub_freq):Drone(id, n) {
+    // this->pub_frequency = pub_freq;
+    std::stringstream ss;
+    ss << "/node_"<<std::to_string(id)<<"/routing_nodes";
+    this->routing_pub = n.advertise<std_msgs::Int16MultiArray>(ss.str(), pub_freq);
+    this->routing_nodes.push_back(id);
+}
+
+void clientutils::Node::publish_routing_nodes() {
+    std_msgs::Int16MultiArray msg;
+    msg.data.clear();
+    for (int i: routing_nodes) {
+        msg.data.push_back(i);
+    }
+    routing_pub.publish(msg);
+}
+
+void clientutils::Node::set_routing_nodes(std::vector<int> routing_nodes) {
+    this->routing_nodes.clear();
+    this->routing_nodes = routing_nodes;
 }

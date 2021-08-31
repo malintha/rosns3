@@ -8,7 +8,7 @@
 namespace utils = clientutils;
 
 typedef std::vector<flatbuffers::Offset<Agent>> agents_t;
-
+typedef flatbuffers::Vector<flatbuffers::Offset<NetworkNode>> network_t;
 typedef struct recv_data {
     ssize_t n_bytes;
     char* recv_buffer;
@@ -24,9 +24,11 @@ private:
     bool client_busy;
     uint8_t *data;
     uint32_t data_size;
-    std::vector<utils::neighborhood_t> neighborhoods;
+    // std::vector<utils::neighborhood_t> neighborhoods;
     ssize_t n_bytes;
     char recv_buffer[MAXLINE];
+    void set_network();
+    const network_t* network;
 
     // plot info
     void iteration(const ros::TimerEvent &e);
@@ -39,5 +41,5 @@ private:
 public:
     Client(utils::params_t, ros::NodeHandle);
     void run();
-    std::vector<utils::neighborhood_t> get_neighborhoods();
+    // std::vector<utils::neighborhood_t> get_neighborhoods();
 };
