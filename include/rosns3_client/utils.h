@@ -7,14 +7,15 @@ namespace clientutils
     class Node : public Drone
     {
         public:
-            Node(int id, ros::NodeHandle n, double pub_freq);
+            Node(int id, ros::NodeHandle n, bool backbone);
             void set_routing_nodes(std::vector<int> routing_nodes);
             void publish_routing_nodes();
-
+            bool is_backbone();
         private:
             double pub_frequency;
             ros::Publisher routing_pub;
             std::vector<int> routing_nodes;
+            bool backbone;
     };
 
     typedef struct params

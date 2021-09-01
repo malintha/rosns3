@@ -28,7 +28,7 @@ private:
     ssize_t n_bytes;
     char recv_buffer[MAXLINE];
     void set_network();
-    const network_t* network;
+    // const network_t* network;
 
     // plot info
     void iteration(const ros::TimerEvent &e);

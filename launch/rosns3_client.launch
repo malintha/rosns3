@@ -2,6 +2,7 @@
 
 <!-- include the launch file for multi_mav_simulator -->
     <!-- <include file="$(find multi_uav_simulator)/launch/simu.launch" /> -->
+    <arg name="n_backbone" default="5"/>
 
 <!-- port number of the rosns3 server -->
     <param name="rosns3_server_port" value="28500" />
@@ -9,11 +10,8 @@
 <!-- frequency to poll the server to obtain information -->
     <param name="rosns3_server_frequency" value="0.5" />
 
-<!-- number of robot (backbone + UE) nodes in the network -->
-    <param name="rosns3_server_n_robots" value="8" />
-
 <!-- number of backbone nodes in the network -->
-    <param name="rosns3_server_n_backbone" value="8" />
+    <param name="rosns3_server_n_backbone" value="$(arg n_backbone)" />
 
     <param name="hops_k" value="1" />
 

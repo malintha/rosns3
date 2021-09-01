@@ -12,10 +12,13 @@ clientutils::params_t clientutils::load_params(ros::NodeHandle nh) {
     clientutils::params_t params;
     nh.getParam("rosns3_server_port", params.port);
     nh.getParam("rosns3_server_frequency", params.frequency);
-    nh.getParam("rosns3_server_n_robots", params.n_robots);
     nh.getParam("rosns3_server_n_backbone", params.n_backbone);
     nh.getParam("rosns3_server_topic_prefix", params.topic_prefix);
     nh.getParam("hops_k", params.hops_k);
+    int ue_robots;
+    
+    nh.getParam("ros_rvo_n_robots", ue_robots);
+    params.n_robots = ue_robots + params.n_backbone;
 
     return params;
 };
@@ -61,12 +64,16 @@ void clientutils::write_to_file(std::vector<int> hops, double avg_dis) {
     outss.close();
 }
 
-clientutils::Node::Node(int id, ros::NodeHandle n, double pub_freq):Drone(id, n) {
+clientutils::Node::Node(int id, ros::NodeHandle n, bool backbone):Drone(id, n) {
     // this->pub_frequency = pub_freq;
+    this->backbone = backbone;
     std::stringstream ss;
-    ss << "/node_"<<std::to_string(id)<<"/routing_nodes";
-    this->routing_pub = n.advertise<std_msgs::Int16MultiArray>(ss.str(), pub_freq);
-    this->routing_nodes.push_back(id);
+    if (backbone) {
+        ss << "/node_"<<std::to_string(id)<<"/routing_nodes";
+        this->routing_pub = n.advertise<std_msgs::Int16MultiArray>(ss.str(), 10);
+        this->routing_nodes.push_back(id);
+    }
+
 }
 
 void clientutils::Node::publish_routing_nodes() {
@@ -81,4 +88,8 @@ void clientutils::Node::publish_routing_nodes() {
 void clientutils::Node::set_routing_nodes(std::vector<int> routing_nodes) {
     this->routing_nodes.clear();
     this->routing_nodes = routing_nodes;
+}
+
+bool clientutils::Node::is_backbone() {
+    return backbone;
 }
