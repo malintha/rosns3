@@ -8,6 +8,9 @@
 #include <unistd.h>
 #include <iostream>
 #include <algorithm>
+#include "std_msgs/Int16MultiArray.h"
+#include "std_msgs/MultiArrayDimension.h"
+#include "eigen3/Eigen/Dense"
 
 Client::Client(clientutils::params_t params, ros::NodeHandle n) : params(params), n(n)
 {
@@ -19,6 +22,8 @@ Client::Client(clientutils::params_t params, ros::NodeHandle n) : params(params)
 
     client_busy = false;
     set_nodes();
+
+    routing_table_pub = n.advertise<std_msgs::Int16MultiArray>("/routing_table", 10);
 }
 
 recv_data_t *Client::send_recv_data()
@@ -104,7 +109,7 @@ void Client::iteration(const ros::TimerEvent &e)
         auto con = [this]()
         {
             this->send_recv_data();
-            this->set_network();
+            routing_tables = this->set_network();
         };
         new std::thread(con);
     }
@@ -113,19 +118,22 @@ void Client::iteration(const ros::TimerEvent &e)
         ROS_DEBUG_STREAM("Iteration skipping. Client busy");
     }
 
+    publish_routing_table();
     // publish current routing nodes
-    for(clientutils::Node* n: nodes) {
-        if (n->is_backbone()) {
-            n->publish_routing_nodes();
-            ROS_DEBUG_STREAM("Published routing tables.");
-        }
-    }
+    // for(clientutils::Node* n: nodes) {
+    //     if (n->is_backbone()) {
+    //         n->publish_routing_nodes();
+    //         ROS_DEBUG_STREAM("Published routing tables.");
+    //     }
+    // }
 }
 
-void Client::set_network() {
+routing_table_t Client::set_network() {
+    routing_table_t routing_table;
     char recvd_data[n_bytes];
     std::memcpy(recvd_data, recv_buffer, sizeof(recvd_data));
     ROS_DEBUG_STREAM("Received " << sizeof(recvd_data) << " bytes.");
+    routing_table.clear();
 
     // receive the router tables as is from server
     auto swarmnetwork = GetSwarmNetwork(recvd_data);
@@ -141,8 +149,49 @@ void Client::set_network() {
                 routing_nodes.push_back(entry->destination());
             }
         }
-        nodes[i]->set_routing_nodes(routing_nodes);
+        // nodes[i]->set_routing_nodes(routing_nodes);
+        // set the routing nodes into a multi-dimensional vector
+        routing_table.push_back(routing_nodes);
     }
+    return routing_table;
+}
+
+// create adjacency matrix -> use it to initialize the multi-array
+void Client::publish_routing_table() {
+    // first create the adjacency matrix
+    Eigen::MatrixXi adjacency = Eigen::MatrixXi::Zero(params.n_backbone,params.n_backbone);
+
+    for(int i=0; i<routing_tables.size(); i++) {
+        std::vector<int> table_i = routing_tables[i];
+        // adjacency(i,i) = 1;
+        for(int j=0; j<params.n_backbone; j++) {
+            if(clientutils::has_value(table_i, j)) {
+                adjacency(i,j) = 1;
+            }            
+        }
+    }
+    // std::cout << "adjacency mat: "<<adjacency <<std::endl;
+// use adjacency matrix to populate the publising message
+
+    std_msgs::Int16MultiArray msg;
+
+    msg.layout.dim.push_back(std_msgs::MultiArrayDimension());
+    msg.layout.dim.push_back(std_msgs::MultiArrayDimension());
+
+    msg.layout.dim[0].size = params.n_backbone;
+    msg.layout.dim[0].stride = params.n_backbone*params.n_backbone;
+    msg.layout.dim[0].label = "rows";
+    
+    msg.layout.dim[1].size = params.n_backbone;
+    msg.layout.dim[1].stride = params.n_backbone;
+    msg.layout.dim[1].label = "columns";
+    
+    for(int i=0;i<adjacency.size(); i++) {
+        msg.data.push_back(adjacency.data()[i]);
+        std::cout<<adjacency.data()[i];
+    }
+
+    routing_table_pub.publish(msg);
 }
 
 // calculate the average neighborhood hops against distance

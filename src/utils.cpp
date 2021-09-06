@@ -77,12 +77,7 @@ clientutils::Node::Node(int id, ros::NodeHandle n, bool backbone):Drone(id, n) {
 }
 
 void clientutils::Node::publish_routing_nodes() {
-    std_msgs::Int16MultiArray msg;
-    msg.data.clear();
-    for (int i: routing_nodes) {
-        msg.data.push_back(i);
-    }
-    routing_pub.publish(msg);
+
 }
 
 void clientutils::Node::set_routing_nodes(std::vector<int> routing_nodes) {
@@ -92,4 +87,12 @@ void clientutils::Node::set_routing_nodes(std::vector<int> routing_nodes) {
 
 bool clientutils::Node::is_backbone() {
     return backbone;
+}
+
+bool clientutils::has_value(std::vector<int> table, int val) {
+    for(int entry: table) {
+        if (entry == val)
+            return true;
+    }
+    return false;
 }
