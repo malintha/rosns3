@@ -119,13 +119,6 @@ void Client::iteration(const ros::TimerEvent &e)
     }
 
     publish_routing_table();
-    // publish current routing nodes
-    // for(clientutils::Node* n: nodes) {
-    //     if (n->is_backbone()) {
-    //         n->publish_routing_nodes();
-    //         ROS_DEBUG_STREAM("Published routing tables.");
-    //     }
-    // }
 }
 
 routing_table_t Client::set_network() {
@@ -163,7 +156,7 @@ void Client::publish_routing_table() {
 
     for(int i=0; i<routing_tables.size(); i++) {
         std::vector<int> table_i = routing_tables[i];
-        // adjacency(i,i) = 1;
+        adjacency(i,i) = 1;
         for(int j=0; j<params.n_backbone; j++) {
             if(clientutils::has_value(table_i, j)) {
                 adjacency(i,j) = 1;
@@ -193,46 +186,3 @@ void Client::publish_routing_table() {
 
     routing_table_pub.publish(msg);
 }
-
-// calculate the average neighborhood hops against distance
-// void Client::calc_plot_info()
-// {
-//     auto network_nodes = this->network;
-//     // get avg hops between the robots in the network
-//     std::vector<int> hops;
-//     std::vector<int> entries;
-
-//     for (int i = 0; i < network_nodes->size(); i++)
-//     {
-//         int n_id = network_nodes->Get(i)->node();
-//         auto routingtable = network_nodes->Get(i)->routingtable();
-//         // ROS_INFO_STREAM("node: " << n_id << " table entries: " << routingtable->size());
-//         entries.push_back(routingtable->size());
-
-//         for (int j = 0; j < routingtable->size(); j++)
-//         {
-//             auto entry = routingtable->Get(j);
-//             if (entry->destination() != i)
-//             {
-//                 hops.push_back(entry->distance());
-//             }
-//         }
-//         if (routingtable->size() < 7)
-//         {
-//             int balance = 7 - routingtable->size();
-//             for (int j = 0; j < balance; j++)
-//             {
-//                 hops.push_back(0);
-//             }
-//         }
-//     }
-//     //get avg distance between nodes
-//     double avg_dis = clientutils::get_avg_dist(nodes);
-//     clientutils::write_to_file(hops, avg_dis);
-//     ROS_INFO_STREAM("avg_dis: "<<avg_dis<<" wrote hops info to file.");
-
-//     // for(int n_entrees: entries) {
-//     //     std::cout << " "<< n_entrees;
-//     // }
-//     // std::cout << std::endl;
-// }

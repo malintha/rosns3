@@ -39,8 +39,6 @@ private:
     recv_data_t* send_recv_data();
     void set_nodes();
     void get_agent_states();
-    void log_info();
-    void calc_plot_info();
     void publish_routing_table();
 
 public:
