@@ -153,18 +153,19 @@ routing_table_t Client::set_network() {
 void Client::publish_routing_table() {
     // first create the adjacency matrix
     Eigen::MatrixXi adjacency = Eigen::MatrixXi::Zero(params.n_backbone,params.n_backbone);
-
+    ROS_DEBUG_STREAM("publishing routing table. Routing tables size: "<<routing_tables.size());
     for(int i=0; i<routing_tables.size(); i++) {
         std::vector<int> table_i = routing_tables[i];
         adjacency(i,i) = 1;
         for(int j=0; j<params.n_backbone; j++) {
             if(clientutils::has_value(table_i, j)) {
                 adjacency(i,j) = 1;
-            }            
+            }    
         }
     }
     // std::cout << "adjacency mat: "<<adjacency <<std::endl;
 // use adjacency matrix to populate the publising message
+    ROS_DEBUG_STREAM("\n"<<adjacency);
 
     std_msgs::Int16MultiArray msg;
 
@@ -181,8 +182,9 @@ void Client::publish_routing_table() {
     
     for(int i=0;i<adjacency.size(); i++) {
         msg.data.push_back(adjacency.data()[i]);
-        std::cout<<adjacency.data()[i];
     }
 
     routing_table_pub.publish(msg);
+    ROS_INFO_STREAM("Published routing table for "<<params.n_backbone << " nodes.");
+
 }

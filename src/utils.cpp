@@ -67,12 +67,12 @@ void clientutils::write_to_file(std::vector<int> hops, double avg_dis) {
 clientutils::Node::Node(int id, ros::NodeHandle n, bool backbone):Drone(id, n) {
     // this->pub_frequency = pub_freq;
     this->backbone = backbone;
-    std::stringstream ss;
-    if (backbone) {
-        ss << "/node_"<<std::to_string(id)<<"/routing_nodes";
-        this->routing_pub = n.advertise<std_msgs::Int16MultiArray>(ss.str(), 10);
-        this->routing_nodes.push_back(id);
-    }
+    // std::stringstream ss;
+    // if (backbone) {
+    //     ss << "/node_"<<std::to_string(id)<<"/routing_nodes";
+    //     this->routing_pub = n.advertise<std_msgs::Int16MultiArray>(ss.str(), 10);
+    //     this->routing_nodes.push_back(id);
+    // }
 
 }
 
