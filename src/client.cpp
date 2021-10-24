@@ -90,13 +90,13 @@ void Client::iteration(const ros::TimerEvent &e)
         for (int i = 0; i < params.n_robots; i++)
         {
             simulator_utils::Waypoint state = nodes[i]->get_state();
-            // ROS_DEBUG_STREAM(state.position.x << state.position.y << state.position.z);
+            ROS_INFO_STREAM(i<<" "<<state.position.x<< " " << state.position.y << " " << state.position.z);
             auto pos = Vec3(state.position.x, state.position.y, state.position.z);
             auto id = i;
             auto agent = CreateAgent(builder, &pos, id);
             agents.push_back(agent);
         }
-
+        // std::cout<<std::endl;
         //create the swarm object
         auto agents_ = builder.CreateVector(agents);
         auto swarm = CreateSwarm(builder, params.n_backbone, agents_);
@@ -133,13 +133,14 @@ routing_table_t Client::set_network() {
     // auto network_nodes = swarmnetwork->nodes();
     auto networknodes = swarmnetwork->nodes();
     for(int i=0; i<networknodes->size(); i++) {
-        std::vector<int> routing_nodes;
+        std::vector<neighborpair> routing_nodes;
         auto routingtable = networknodes->Get(i)->routingtable();
         for (int j=0;j<routingtable->size(); j++) {
             auto entry = routingtable->Get(j);
             int hops = entry->distance();
-            if (hops == params.hops_k) {
-                routing_nodes.push_back(entry->destination());
+            if (hops <= params.hops_k) {
+                neighborpair np(entry->destination(), hops);
+                routing_nodes.push_back(np);
             }
         }
         // nodes[i]->set_routing_nodes(routing_nodes);
@@ -155,11 +156,12 @@ void Client::publish_routing_table() {
     Eigen::MatrixXi adjacency = Eigen::MatrixXi::Zero(params.n_backbone,params.n_backbone);
     ROS_DEBUG_STREAM("publishing routing table. Routing tables size: "<<routing_tables.size());
     for(int i=0; i<routing_tables.size(); i++) {
-        std::vector<int> table_i = routing_tables[i];
+        std::vector<neighborpair> table_i = routing_tables[i];
         adjacency(i,i) = 1;
         for(int j=0; j<params.n_backbone; j++) {
-            if(clientutils::has_value(table_i, j)) {
-                adjacency(i,j) = 1;
+            int dis = clientutils::has_value(table_i, j);
+            if(dis > 0) {
+                adjacency(i,j) = dis;
             }    
         }
     }
@@ -185,6 +187,6 @@ void Client::publish_routing_table() {
     }
 
     routing_table_pub.publish(msg);
-    ROS_INFO_STREAM("Published routing table for "<<params.n_backbone << " nodes.");
+    // ROS_INFO_STREAM("Published routing table for "<<params.n_backbone << " nodes.");
 
 }

@@ -89,10 +89,10 @@ bool clientutils::Node::is_backbone() {
     return backbone;
 }
 
-bool clientutils::has_value(std::vector<int> table, int val) {
-    for(int entry: table) {
-        if (entry == val)
-            return true;
+int clientutils::has_value(std::vector<std::pair<int, int>> table, int val) {
+    for(std::pair<int, int> entry: table) {
+        if (entry.first == val)
+            return entry.second;
     }
-    return false;
+    return 0;
 }

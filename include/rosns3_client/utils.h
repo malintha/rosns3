@@ -42,5 +42,5 @@ namespace clientutils
 
     void write_to_file(std::vector<int> hops, double avg_dis);
 
-    bool has_value(std::vector<int>, int val);
+    int has_value(std::vector<std::pair<int, int>>, int val);
 };

@@ -9,7 +9,8 @@ namespace utils = clientutils;
 
 typedef std::vector<flatbuffers::Offset<Agent>> agents_t;
 typedef flatbuffers::Vector<flatbuffers::Offset<NetworkNode>> network_t;
-typedef std::vector<std::vector<int>> routing_table_t;
+typedef std::pair<int, int> neighborpair;
+typedef std::vector<std::vector<neighborpair> > routing_table_t;
 
 typedef struct recv_data {
     ssize_t n_bytes;

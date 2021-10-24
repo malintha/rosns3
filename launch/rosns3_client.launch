@@ -3,7 +3,7 @@
 <!-- include the launch file for multi_mav_simulator -->
     <!-- <include file="$(find multi_uav_simulator)/launch/simu.launch" /> -->
 <!-- number of backbone nodes in the network -->
-    <arg name="n_backbone" default="3"/>
+    <arg name="n_backbone" default="8"/>
 
     <arg name="n_ue" default="5" />
 
@@ -11,9 +11,9 @@
     <arg name="server_port" value="28500" />
 
 <!-- frequency to poll the server to obtain information -->
-    <arg name="frequency" value="0.5" />
+    <arg name="frequency" value="1" />
 
-    <arg name="hops_k" value="1" />
+    <arg name="hops_k" default="1" />
 
     <env name="ROSCONSOLE_CONFIG_FILE" value="$(find rosns3_client)/config/custom_rosconsole.conf"/>
     <node name="rosns3_client" pkg="rosns3_client" type="rosns3_client" output="screen" args="$(arg n_backbone) $(arg n_ue) $(arg server_port) $(arg frequency) $(arg hops_k)"/>
