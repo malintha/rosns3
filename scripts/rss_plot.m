@@ -57,4 +57,7 @@ dat_ = sto_rss_log;
 plot(dat_(1:max_dis,1),dat_(1:max_dis,2),'--r','LineWidth',2);
 legend({'Std. Dev Error','Avg. RSS (Log + Stochastic Noise)','RSS (Log Fading)'});
 ylim([-105,-30]);
+grid on
+set(axes1,'FontSize',13,'GridAlpha',0.4,'GridLineStyle','--','LineWidth',...
+    1.5,'XGrid','on','YGrid','on');
 hold off

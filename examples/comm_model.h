@@ -25,12 +25,13 @@ class CoModel {
         std::vector<neighborhood_t> get_hop_info();
         int total_time;
         NodeContainer backbone;
+        NodeContainer stas;
+
         int getBackboneId(Ipv4Address dest);
         
 
     private:
         uint32_t n_backbone;
-        NodeContainer stas;
         NodeContainer aps;
         NetDeviceContainer devices;
         std::vector<mobile_node_t> ue_nodes;

@@ -15,6 +15,7 @@
 #include "ns3/olsr-routing-protocol.h"
 // #include "utils.h"
 // #include "messages/network_routing_generated.h"
+#include "ns3/wifi-phy.h"
 
 NS_LOG_COMPONENT_DEFINE("ROSNS3Model");
 
@@ -67,7 +68,7 @@ int CoModel::getBackboneId(Ipv4Address dest)
 
 std::vector<neighborhood_t> CoModel::get_hop_info()
 {
-    int hop_length = 4;
+    int hop_length = 3;
     std::vector<neighborhood_t> neighborhoods;
     std::vector<int> hops;
     // ns3::Ipv4GlobalRoutingHelper::PopulateRoutingTables();
@@ -78,7 +79,6 @@ std::vector<neighborhood_t> CoModel::get_hop_info()
         // Ptr<aodv::RoutingProtocol> ipv4 = node->GetObject<aodv::RoutingProtocol> ();
         Ipv4Address source = node->GetObject<Ipv4>()->GetAddress(1, 0).GetLocal();
         Ptr<olsr::RoutingProtocol> rp = node->GetObject<olsr::RoutingProtocol>();
-        // std::cout << "table length: "<<std::endl;
         std::vector<olsr::RoutingTableEntry> table = rp->GetRoutingTableEntries();
         std::vector<int> neighbors;
         for (uint32_t j = 0; j < table.size(); j++)
@@ -92,7 +92,7 @@ std::vector<neighborhood_t> CoModel::get_hop_info()
                 {
                     hops.push_back(entree.distance);
                 }
-                if (entree.distance == hop_length)
+                if (entree.distance <= hop_length)
                 {
                     neighbors.push_back(dest_id);
                 }
@@ -118,13 +118,13 @@ void CoModel::run()
         if (print_routes)
         {
             Ptr<OutputStreamWrapper> routingStream = Create<OutputStreamWrapper>("aodv.routes", std::ios::out);
+            // Ptr<OutputStreamWrapper> osw = Create<OutputStreamWrapper> (&std::cout);
             olsr_h.PrintRoutingTableAllAt(Seconds(sim_time - 1), routingStream);
         }
         Simulator::Stop(Seconds(sim_time));
         Simulator::Run();
         NS_LOG_DEBUG("Finished simulation. Time: " << Simulator::Now().GetSeconds());
-
-        // report(std::cout);
+        // report(std:: );
         // Simulator::Destroy();
     };
     if (use_real_time)
@@ -142,12 +142,17 @@ void CoModel::run()
 // update the mobility model of backbone nodes
 void CoModel::update_mobility_model(std::vector<mobile_node_t> mobile_nodes)
 {
+    NodeContainer all_nodes(backbone);
+    all_nodes.Add(stas);
     this->mobile_nodes = mobile_nodes;
-    for (uint32_t i = 0; i < n_backbone; i++)
+    for (uint32_t i = 0; i < all_nodes.GetN(); i++)
     {
-        Ptr<Node> node = backbone.Get(i);
+        Ptr<Node> node = all_nodes.Get(i);
         Ptr<MobilityModel> mob = node->GetObject<MobilityModel>();
-        mob->SetPosition(mobile_nodes[i].position);
+        Vector p = mobile_nodes[i].position;
+        if(i<n_backbone)
+            p.y = -p.y;
+        mob->SetPosition(p);
     }
     total_time += sim_time;
     NS_LOG_DEBUG("Simulating with the updated mobility model. Total time: " << total_time);
@@ -182,7 +187,6 @@ void CoModel::install_inet_stack()
 
     internet.SetRoutingHelper(olsr_h);
     internet.Install(backbone);
-
     address.SetBase("172.16.0.0", "255.255.255.0");
     interfaces_bb = address.Assign(devices);
     NS_LOG_DEBUG("Installed AODV internet stack.");
@@ -197,12 +201,15 @@ void CoModel::create_sta_nodes(std::vector<mobile_node_t> ue_nodes)
     YansWifiChannelHelper wifiChannel = YansWifiChannelHelper::Default();
     YansWifiPhyHelper wifiPhy = YansWifiPhyHelper::Default();
 
-    wifiChannel.AddPropagationLoss("ns3::LogDistancePropagationLossModel", "Exponent", ns3::DoubleValue(2.52),
-                                   "ReferenceLoss", ns3::DoubleValue(-53));
 
-    wifiChannel.AddPropagationLoss("ns3::NakagamiPropagationLossModel", "m0", ns3::DoubleValue(1),
-                                   "m1", ns3::DoubleValue(1), "m2", ns3::DoubleValue(1));
-    wifiChannel.SetPropagationDelay("ns3::ConstantSpeedPropagationDelayModel");
+    // wifiChannel.AddPropagationLoss("ns3::LogDistancePropagationLossModel", "Exponent", ns3::DoubleValue(2.52),
+    //                                "ReferenceLoss", ns3::DoubleValue(-53));
+    // const Ptr<NormalRandomVariable> nrv = CreateObject<NormalRandomVariable> ();
+    // nrv->SetAttribute ("Mean", DoubleValue (0));
+    // nrv->SetAttribute ("Variance", DoubleValue (32));
+    
+    // wifiChannel.AddPropagationLoss("ns3::RandomPropagationLossModel", "Variable", ns3::PointerValue(nrv));
+    // wifiChannel.SetPropagationDelay("ns3::ConstantSpeedPropagationDelayModel");
 
     wifiPhy.SetChannel(wifiChannel.Create());
     // AsciiTraceHelper ascii;
@@ -242,11 +249,6 @@ void CoModel::create_sta_nodes(std::vector<mobile_node_t> ue_nodes)
     NS_LOG_INFO("Setting STA mobility model");
     mobility_sta.SetPositionAllocator(positionAlloc);
     mobility_sta.SetMobilityModel("ns3::ConstantPositionMobilityModel");
-    // mobility_sta.SetMobilityModel ("ns3::RandomDirection2dMobilityModel",
-    //                                "Bounds", RectangleValue (Rectangle (-30, 30, -30, 30)),
-    //                                "Speed", StringValue ("ns3::ConstantRandomVariable[Constant=1]"),
-    //                                "Pause", StringValue ("ns3::ConstantRandomVariable[Constant=0.4]"));
-
     mobility_sta.Install(stas);
     NS_LOG_DEBUG("Created STA and AP nodes.");
 
@@ -273,20 +275,32 @@ void CoModel::create_backbone_devices()
 
     WifiMacHelper wifiMac;
     wifiMac.SetType("ns3::AdhocWifiMac");
+    //   wifiMac.SetRemoteStationManager ("ns3::ConstantRateWifiManager",
+    //                             "DataMode",StringValue (phyMode),
+    //                             "ControlMode",StringValue (phyMode));
 
     // yanswifiPhy by defaul implements 802.11a. the maximum ofdm rate for 802.11a is 54 which is used here.
     //todo: how to set transmission power? is that ok to be set in the loss model???
-    //tune Nakagami to zero mean rv
+    
+    // wifiChannel.AddPropagationLoss("ns3::RandomPropagationLossModel", "Variable", ns3::PointerValue(nrv));
     YansWifiPhyHelper wifiPhy = YansWifiPhyHelper::Default();
+    // SpectrumWifiPhyHelper wifiPhy = SpectrumWifiPhyHelper::Default();
     YansWifiChannelHelper wifiChannel = YansWifiChannelHelper::Default();
 
-    wifiChannel.AddPropagationLoss("ns3::LogDistancePropagationLossModel", "Exponent", ns3::DoubleValue(2.52),
+    wifiChannel.AddPropagationLoss("ns3::LogDistancePropagationLossModel","Exponent", ns3::DoubleValue(2.4),
                                    "ReferenceLoss", ns3::DoubleValue(-53));
-    wifiChannel.AddPropagationLoss("ns3::NakagamiPropagationLossModel", "m0", ns3::DoubleValue(1),
-                                   "m1", ns3::DoubleValue(1), "m2", ns3::DoubleValue(1));
+    // const Ptr<NormalRandomVariable> nrv = CreateObject<NormalRandomVariable> ();
+    // nrv->SetAttribute ("Mean", DoubleValue (0));
+    // nrv->SetAttribute ("Variance", DoubleValue (32));
+    
+    // wifiChannel.AddPropagationLoss("ns3::RandomPropagationLossModel", "Variable", ns3::PointerValue(nrv));
+
+    // wifiChannel.AddPropagationLoss("ns3::LogDistancePropagationLossModel", "Exponent", ns3::DoubleValue(2.52),
+                                //    "ReferenceLoss", ns3::DoubleValue(-53));
+
     wifiChannel.SetPropagationDelay("ns3::ConstantSpeedPropagationDelayModel");
     wifiPhy.SetChannel(wifiChannel.Create());
-
+    
     /**
      * https://www.nsnam.org/docs/release/3.21/doxygen/classns3_1_1_constant_rate_wifi_manager.html
      * 
@@ -301,8 +315,17 @@ void CoModel::create_backbone_devices()
      * 
      * **/
     WifiHelper wifi;
+    wifi.SetStandard (WIFI_PHY_STANDARD_80211n_5GHZ);
+    wifiPhy.Set ("Frequency", UintegerValue (5180));
+    // wifiPhy.Set ("RxGain", DoubleValue (10));
+
+    // wifiPhy.Set ("TxPowerStart", DoubleValue (16.0));
+    // wifiPhy.Set ("TxPowerEnd", DoubleValue (50));
+    // wifiPhy.Set ("Frequency", DoubleValue (20));
+
+
     wifi.SetRemoteStationManager("ns3::ConstantRateWifiManager", "DataMode",
-                                 StringValue("OfdmRate54Mbps"), "RtsCtsThreshold", UintegerValue(0));
+                                 StringValue("OfdmRate6Mbps"), "RtsCtsThreshold", UintegerValue(0));
     devices = wifi.Install(wifiPhy, wifiMac, backbone);
 
     if (pcap)
@@ -337,7 +360,7 @@ void CoModel::install_ping_applications()
     ping_apps.Start(Seconds(1));
     ping_apps.Stop(Seconds(sim_time) - Seconds(1));
 
-    NS_LOG_DEBUG("Installed UDP applications.");
+    NS_LOG_DEBUG("Installed PING applications.");
 };
 
 // experiments:
@@ -345,9 +368,9 @@ void CoModel::install_ping_applications()
 void CoModel::install_scen1()
 {
     // install udp between the farthest nodes
-    uint16_t port = 9;
-    int end_buff = 1;
-    int start = 1;
+    uint16_t port = 10;
+    int end_buff = 0.5;
+    int start = 0.5;
 
     Config::SetDefault("ns3::OnOffApplication::PacketSize", StringValue("1472"));
     Config::SetDefault("ns3::OnOffApplication::DataRate", StringValue("100Mb/s"));
@@ -356,7 +379,7 @@ void CoModel::install_scen1()
     // for(uint i=0; i<n_ue/2; i++) {
     // uint dest_id = n_ue/2 + i;
     Ptr<Node> source1 = stas.Get(0);
-    Ptr<Node> destination1 = stas.Get(2);
+    Ptr<Node> destination1 = stas.Get(4);
     Ipv4Address source_add1 = source1->GetObject<Ipv4>()->GetAddress(1, 0).GetLocal();
     Ipv4Address dest_add1 = destination1->GetObject<Ipv4>()->GetAddress(1, 0).GetLocal();
     OnOffHelper onoff("ns3::UdpSocketFactory", Address(InetSocketAddress(dest_add1, port)));

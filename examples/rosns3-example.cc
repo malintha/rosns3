@@ -5,33 +5,70 @@
 #include "messages/neighborhoods_generated.h"
 #include "messages/network_routing_generated.h"
 #include "ns3/olsr-routing-protocol.h"
+#include "ns3/propagation-loss-model.h"
+#include "ns3/constant-position-mobility-model.h"
+#include <fstream>
 
 using namespace ns3;
 
 // commands:
 // NS_LOG="ROSNS3Server:ROSNS3Example:ROSNS3Model" ./waf --run rosns3-example --vis
 // ./client
-// experiment codes: 
-// tshark -T text -r ap--4-0.pcap -Y "udp && ip.dst == 10.0.0.6" > 4-0.txt 
+// experiment codes:
+// tshark -T text -r ap--4-0.pcap -Y "udp && ip.dst == 10.0.0.6" > 4-0.txt
 // wc -l 4-0.txt | awk '{ print $1 }'
+
+
 
 int main(int argc, char *argv[])
 {
+  uint32_t n_backbones = 5;
+  uint32_t isdynamic = 0;
   CommandLine cmd;
-  cmd.Parse(argc, argv);
+  cmd.AddValue ("backbones", "Number of backbone UAVs", n_backbones);
+  cmd.AddValue ("dynamic", "Is dynamic simulation", isdynamic);
 
+  cmd.Parse(argc, argv);
+  std::cout<<"nbackbones: "<<n_backbones<<" Dynamic: "<<isdynamic<<std::endl;
   NS_LOG_COMPONENT_DEFINE("ROSNS3Example");
+
+  // create the propagation loss model for obtaining the RSS between UAV/UE nodes
+  Ptr<PropagationLossModel> log_loss = CreateObject<LogDistancePropagationLossModel> ();
+  log_loss->SetAttribute("Exponent", ns3::DoubleValue(3));
+  log_loss->SetAttribute("ReferenceLoss", ns3::DoubleValue(46));
+  Ptr<PropagationLossModel> fading = CreateObject<RandomPropagationLossModel> ();
+  const Ptr<NormalRandomVariable> nrv = CreateObject<NormalRandomVariable> ();
+  nrv->SetAttribute ("Mean", DoubleValue (0));
+  nrv->SetAttribute ("Variance", DoubleValue (0));
+  fading->SetAttribute("Variable", ns3::PointerValue(nrv));
+  log_loss->SetNext(fading);
+  Ptr<ConstantPositionMobilityModel> a = CreateObject<ConstantPositionMobilityModel> ();
+  Ptr<ConstantPositionMobilityModel> b = CreateObject<ConstantPositionMobilityModel> ();
+  double txPowerDbm = +16.0206; // dBm
+// write the values to a text file
+  std::stringstream ss;
+  if(isdynamic) {
+    ss << std::to_string(n_backbones)<<"_dynamic.txt";
+  }
+  else {
+    ss << std::to_string(n_backbones)<<"_static.txt";
+  }
+  std::string filename = ss.str();
+  std::ofstream file_out;
+  file_out.open(filename, std::ios_base::app);
 
   ROSNS3Server server(28500);
   bool use_real_time = false;
   bool sim_start = false;
+  bool log_rss = true;
   server.start();
   CoModel *model;
-
+  uint64_t it = 0;
   while (server.server_running())
   {
     if (server.data_ready())
     {
+      it++;
       recvdata_t data = server.get_data();
       int sim_time = 10;
       ssize_t n_bytes = data.n_bytes;
@@ -45,6 +82,8 @@ int main(int argc, char *argv[])
       auto agents = swarm->agents();
       int backbone_nodes = swarm->backbone();
       std::vector<mobile_node_t> mobile_nodes;
+      // ns3::RngSeedManager::SetRun(it);
+
       for (unsigned int i = 0; i < agents->size(); i++)
       {
         const Vec3 *v = agents->Get(i)->position();
@@ -57,7 +96,7 @@ int main(int argc, char *argv[])
       // create the comm model and let the simulation run
       if (!sim_start)
       {
-        model = new CoModel(mobile_nodes,backbone_nodes, sim_time, use_real_time);
+        model = new CoModel(mobile_nodes, backbone_nodes, sim_time, use_real_time);
         NS_LOG_INFO("Created CoModel");
 
         model->run();
@@ -67,60 +106,113 @@ int main(int argc, char *argv[])
       {
         model->update_mobility_model(mobile_nodes);
       }
+      NS_LOG_INFO("sim_time : " << Simulator::Now().GetSeconds()<<" total_time: "<<model->total_time);
+
       if (Simulator::Now().GetSeconds() > model->total_time - 1)
       {
-        NS_LOG_INFO("Getting updated routing tables at : " << Simulator::Now().GetSeconds());
+        
+        // get the RSS values of each ue node
 
-      {
-        // build network routing object
-        flatbuffers::FlatBufferBuilder builder;
-        std::vector<flatbuffers::Offset<NetworkNode>> swarm_network;
-        NodeContainer backbone_ = model->backbone;
+        NodeContainer sta_ = model->stas;
+        float tot_rss = 0;
+        for(int i=0; i< sta_.GetN(); i++) {
+          Ptr<Node> sta_node = sta_.Get(i);
 
-        for (uint32_t i = 0; i < backbone_.GetN(); i++)
-        {
-          Ptr<Node> node = backbone_.Get(i);
-          Ipv4Address source = node->GetObject<Ipv4>()->GetAddress(2, 0).GetLocal();
+          Ptr<MobilityModel> mob = sta_node->GetObject<MobilityModel>();
+          Vector pos = mob->GetPosition();
+          int idx_closest = utils::get_closest_uav(pos, model->backbone);
+          Ptr<Node> closest_uav_node = model->backbone.Get(idx_closest);
+          Ptr<MobilityModel> mob_uav = closest_uav_node->GetObject<MobilityModel>();
+          Vector uav_pos = mob_uav->GetPosition();
+          // double rss = utils::get_rss(pos, model->backbone, log_loss);
+          a->SetPosition(pos);
+          b->SetPosition(uav_pos);
+          double rss = log_loss->CalcRxPower(txPowerDbm, a, b);
+          // std::cout<<"id: "<<i<<" sta pos: "<<pos <<" uav: "<<uav_pos<<" dis: "<<CalculateDistance(pos,uav_pos)<<std::endl;
+          tot_rss += rss;
+        }
+        file_out <<Simulator::Now().GetSeconds()<<" , "<<tot_rss/sta_.GetN()<<std::endl;
 
-          Ptr<olsr::RoutingProtocol> rp = node->GetObject<olsr::RoutingProtocol>();
-          std::vector<olsr::RoutingTableEntry> table = rp->GetRoutingTableEntries();
-          // NS_LOG_DEBUG("###: i "<<i<< " ip: "<<source);
+        // get the RSS values of each uav nodes
+        // NodeContainer bb_ = model->backbone;
+        // for(int i=0; i< bb_.GetN(); i++) {
+        //   Ptr<Node> bb_node = bb_.Get(i);
 
-          // for node routing table
-          std::vector<flatbuffers::Offset<Entree>> table_rt;
+        //   Ptr<MobilityModel> mob = bb_node->GetObject<MobilityModel>();
           
-          // select backbone node entrees from olsr table and create corresponding fb routing table entry
-          for (uint32_t j = 0; j < table.size(); j++)
+        //   Vector pos = mob->GetPosition();
+        //   int idx_closest = utils::get_closest_uav(pos, model->backbone);
+        //   Ptr<Node> closest_uav_node = model->backbone.Get(idx_closest);
+        //   Ptr<MobilityModel> mob_uav = closest_uav_node->GetObject<MobilityModel>();
+        //   Vector uav_pos = mob_uav->GetPosition();
+        //   // double rss = utils::get_rss(pos, model->backbone, log_loss);
+        //   a->SetPosition(pos);
+        //   b->SetPosition(uav_pos);
+        //   double rss = log_loss->CalcRxPower(txPowerDbm, a, b);
+        //   // std::cout<<"id: "<<i<<" sta pos: "<<pos <<" uav: "<<uav_pos<<" dis: "<<CalculateDistance(pos,uav_pos)<<std::endl;
+        //   std::cout <<Simulator::Now().GetSeconds()<<" "<<" "<<i<<" "<<rss<<std::endl;
+
+        // }
+        std::cout<<Simulator::Now().GetSeconds()<<std::endl;
+
+        NS_LOG_DEBUG("Getting updated routing tables at : " << Simulator::Now().GetSeconds());
+
+        {
+          // build network routing object
+          flatbuffers::FlatBufferBuilder builder;
+          std::vector<flatbuffers::Offset<NetworkNode>> swarm_network;
+          NodeContainer backbone_ = model->backbone;
+
+          for (uint32_t i = 0; i < backbone_.GetN(); i++)
           {
-            olsr::RoutingTableEntry entree = table[j];
-            Ipv4Address dest = entree.destAddr;
-            // NS_LOG_DEBUG("source: "<< i<<" table len: "<<table.size()<<" dest: "<<dest);
-            const int dest_id = model->getBackboneId(dest);
-            if (dest_id != -1)
+            Ptr<Node> node = backbone_.Get(i);
+            Ipv4Address source = node->GetObject<Ipv4>()->GetAddress(2, 0).GetLocal();
+
+            Ptr<olsr::RoutingProtocol> rp = node->GetObject<olsr::RoutingProtocol>();
+            std::vector<olsr::RoutingTableEntry> table = rp->GetRoutingTableEntries();
+            
+            // NS_LOG_DEBUG("source: "<<i);
+            // for(auto &e :table)
+            //   NS_LOG_DEBUG("dest: "<<e.destAddr<<" hops: "<<e.distance);
+
+
+            // for node routing table
+            std::vector<flatbuffers::Offset<Entree>> table_rt;
+
+            // select backbone node entrees from olsr table and create corresponding fb routing table entry
+            for (uint32_t j = 0; j < table.size(); j++)
+            {
+              olsr::RoutingTableEntry entree = table[j];
+              Ipv4Address dest = entree.destAddr;
+              // NS_LOG_DEBUG("source: "<< i<<" table len: "<<table.size()<<" dest: "<<dest);
+              // if(dest.IsEqual(source)) {
+              const int dest_id = model->getBackboneId(dest);
+              if (dest_id != -1)
               {
                 const int dist = entree.distance;
                 auto entry_rt = CreateEntree(builder, dest_id, entree.distance);
                 table_rt.push_back(entry_rt);
                 // NS_LOG_DEBUG("source: "<< i<<" destination: "<<dest_id<<" dist: "<<dist);
               }
+              // }
+            }
+            // create fb network node with routing table and node id
+            auto routingtable_fb = builder.CreateVector(table_rt);
+            auto network_node = CreateNetworkNode(builder, i, routingtable_fb);
+            swarm_network.push_back(network_node);
           }
-          // create fb network node with routing table and node id
-          auto routingtable_fb = builder.CreateVector(table_rt);
-          auto network_node = CreateNetworkNode(builder, i, routingtable_fb);
-          swarm_network.push_back(network_node);
-        }
-        auto swarm_network_fb = builder.CreateVector(swarm_network);
-        auto swarmnetwork = CreateSwarmNetwork(builder,swarm_network_fb);  
-        builder.Finish(swarmnetwork);
+          auto swarm_network_fb = builder.CreateVector(swarm_network);
+          auto swarmnetwork = CreateSwarmNetwork(builder, swarm_network_fb);
+          builder.Finish(swarmnetwork);
 
-        NS_LOG_INFO("swarmnetwork: "<<swarm_network.size());
-        // send the neighborhoods to udp client
-        uint8_t* data = builder.GetBufferPointer();
-        uint32_t data_size = builder.GetSize();
-        server.send_data(data, data_size);
-      }
-      
-      // {
+          NS_LOG_INFO("swarmnetwork: " << swarm_network.size());
+          // send the neighborhoods to udp client
+          uint8_t *data = builder.GetBufferPointer();
+          uint32_t data_size = builder.GetSize();
+          server.send_data(data, data_size);
+        }
+
+        // {
         // std::vector<neighborhood_t> neighborhoods = model->get_hop_info();
         // build the serializable neighborhood object
         // flatbuffers::FlatBufferBuilder builder;
@@ -140,10 +232,7 @@ int main(int argc, char *argv[])
         // uint8_t* data = builder.GetBufferPointer();
         // uint32_t data_size = builder.GetSize();
         // server.send_data(data, data_size);
-      // }
-
-
-
+        // }
       }
     }
 
