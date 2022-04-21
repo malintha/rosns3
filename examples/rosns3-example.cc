@@ -96,7 +96,7 @@ int main(int argc, char *argv[])
       {
         const Vec3 *v = agents->Get(i)->position();
         int id = agents->Get(i)->id();
-        Vector pos(v->x(), v->y(), v->z());
+        ns3::Vector pos(v->x(), v->y(), v->z());
         mobile_node_t node = {.position = pos, .id = id};
         mobile_nodes.push_back(node);
       }

@@ -23,7 +23,7 @@ typedef struct recvdata_t {
 } recvdata_t;
 
 typedef struct mobile_node_t {
-    Vector position;
+    ns3::Vector position;
     int id;
 } mobile_node_t;
 

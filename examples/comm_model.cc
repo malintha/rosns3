@@ -149,7 +149,7 @@ void CoModel::update_mobility_model(std::vector<mobile_node_t> mobile_nodes)
     {
         Ptr<Node> node = all_nodes.Get(i);
         Ptr<MobilityModel> mob = node->GetObject<MobilityModel>();
-        Vector p = mobile_nodes[i].position;
+        ns3::Vector p = mobile_nodes[i].position;
         if(i<n_backbone)
             p.y = -p.y;
         mob->SetPosition(p);

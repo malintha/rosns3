@@ -3,7 +3,7 @@
 #include <eigen3/Eigen/Dense>
 #include <algorithm>
 
-std::vector<mobile_node_t> utils::get_ue(Vector2d roi_means, Vector2d roi_vars)
+std::vector<mobile_node_t> utils::get_ue(Eigen::Vector2d roi_means, Eigen::Vector2d roi_vars)
 {
     int n_ues = 4;
     std::random_device rd{};
@@ -15,7 +15,7 @@ std::vector<mobile_node_t> utils::get_ue(Vector2d roi_means, Vector2d roi_vars)
 
     for (int i = 0; i < n_ues; i++)
     {
-        Vector pose(d1(gen), d2(gen), 0);
+        ns3::Vector pose(d1(gen), d2(gen), 0);
         mobile_node_t ue_node = {.position = pose, .id = i};
         ue_nodes.push_back(ue_node);
     }
@@ -78,13 +78,13 @@ double_comparator double_comp_functor =
     {
         return disA > disB;
     };
-int utils::get_closest_uav(Vector ue_pos, NodeContainer backbone) {
+int utils::get_closest_uav(ns3::Vector ue_pos, NodeContainer backbone) {
     std::vector<std::pair<double, uint16_t> > distances;
     for (uint16_t i = 0; i < backbone.GetN(); i++)
     {
         Ptr<Node> uav_node = backbone.Get(i);
         Ptr<MobilityModel> mob = uav_node->GetObject<MobilityModel>();
-        Vector uav_pos = mob->GetPosition();
+        ns3::Vector uav_pos = mob->GetPosition();
         double dis = CalculateDistance(uav_pos, ue_pos);
         distances.push_back(std::pair<double, uint16_t>(dis, i));
     }
@@ -94,7 +94,7 @@ int utils::get_closest_uav(Vector ue_pos, NodeContainer backbone) {
     return idx_closest;
 }
 
-double utils::get_rss(Vector &ue_pos, NodeContainer &backbone, Ptr<PropagationLossModel> &model) {
+double utils::get_rss(ns3::Vector &ue_pos, NodeContainer &backbone, Ptr<PropagationLossModel> &model) {
     std::vector<double> rss_vals;
     // double sum = 0;
     Ptr<ConstantPositionMobilityModel> ue_pos_mob = CreateObject<ConstantPositionMobilityModel> ();
