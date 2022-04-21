@@ -18,18 +18,23 @@ using namespace ns3;
 // tshark -T text -r ap--4-0.pcap -Y "udp && ip.dst == 10.0.0.6" > 4-0.txt
 // wc -l 4-0.txt | awk '{ print $1 }'
 
-
-
 int main(int argc, char *argv[])
 {
+
+  // TODO: read all these values & Friis parameters from a YAML file.
+  
   uint32_t n_backbones = 5;
   uint32_t isdynamic = 0;
+  uint32_t server_port = 28500;
+
   CommandLine cmd;
+
   cmd.AddValue ("backbones", "Number of backbone UAVs", n_backbones);
   cmd.AddValue ("dynamic", "Is dynamic simulation", isdynamic);
-
+  cmd.AddValue ("server port", "UDP Server Port of ROSNS3", server_port);
+  
   cmd.Parse(argc, argv);
-  std::cout<<"nbackbones: "<<n_backbones<<" Dynamic: "<<isdynamic<<std::endl;
+  std::cout<<"UAVs: "<<n_backbones<<" Dynamic: "<<isdynamic<<" Server Port: "<<server_port<<std::endl;
   NS_LOG_COMPONENT_DEFINE("ROSNS3Example");
 
   // create the propagation loss model for obtaining the RSS between UAV/UE nodes
@@ -45,19 +50,22 @@ int main(int argc, char *argv[])
   Ptr<ConstantPositionMobilityModel> a = CreateObject<ConstantPositionMobilityModel> ();
   Ptr<ConstantPositionMobilityModel> b = CreateObject<ConstantPositionMobilityModel> ();
   double txPowerDbm = +16.0206; // dBm
-// write the values to a text file
-  std::stringstream ss;
-  if(isdynamic) {
-    ss << std::to_string(n_backbones)<<"_dynamic.txt";
-  }
-  else {
-    ss << std::to_string(n_backbones)<<"_static.txt";
-  }
-  std::string filename = ss.str();
-  std::ofstream file_out;
-  file_out.open(filename, std::ios_base::app);
 
-  ROSNS3Server server(28500);
+// write the values to a text file
+  
+  // std::stringstream ss;
+  // if(isdynamic) {
+  //   ss << std::to_string(n_backbones)<<"_dynamic.txt";
+  // }
+  // else {
+  //   ss << std::to_string(n_backbones)<<"_static.txt";
+  // }
+  // std::string filename = ss.str();
+  // std::ofstream file_out;
+  // file_out.open(filename, std::ios_base::app);
+
+  ROSNS3Server server(server_port);
+
   bool use_real_time = false;
   bool sim_start = false;
   bool log_rss = true;
@@ -111,27 +119,30 @@ int main(int argc, char *argv[])
       if (Simulator::Now().GetSeconds() > model->total_time - 1)
       {
         
-        // get the RSS values of each ue node
+        // TODO: get the RSS values between the neighboring nodes
 
-        NodeContainer sta_ = model->stas;
-        float tot_rss = 0;
-        for(int i=0; i< sta_.GetN(); i++) {
-          Ptr<Node> sta_node = sta_.Get(i);
+        // NodeContainer sta_ = model->stas;
+        // float tot_rss = 0;
+        // for(int i=0; i< sta_.GetN(); i++) {
+        //   Ptr<Node> sta_node = sta_.Get(i);
 
-          Ptr<MobilityModel> mob = sta_node->GetObject<MobilityModel>();
-          Vector pos = mob->GetPosition();
-          int idx_closest = utils::get_closest_uav(pos, model->backbone);
-          Ptr<Node> closest_uav_node = model->backbone.Get(idx_closest);
-          Ptr<MobilityModel> mob_uav = closest_uav_node->GetObject<MobilityModel>();
-          Vector uav_pos = mob_uav->GetPosition();
-          // double rss = utils::get_rss(pos, model->backbone, log_loss);
-          a->SetPosition(pos);
-          b->SetPosition(uav_pos);
-          double rss = log_loss->CalcRxPower(txPowerDbm, a, b);
-          // std::cout<<"id: "<<i<<" sta pos: "<<pos <<" uav: "<<uav_pos<<" dis: "<<CalculateDistance(pos,uav_pos)<<std::endl;
-          tot_rss += rss;
-        }
-        file_out <<Simulator::Now().GetSeconds()<<" , "<<tot_rss/sta_.GetN()<<std::endl;
+        //   Ptr<MobilityModel> mob = sta_node->GetObject<MobilityModel>();
+        //   Vector pos = mob->GetPosition();
+        //   int idx_closest = utils::get_closest_uav(pos, model->backbone);
+        //   Ptr<Node> closest_uav_node = model->backbone.Get(idx_closest);
+        //   Ptr<MobilityModel> mob_uav = closest_uav_node->GetObject<MobilityModel>();
+        //   Vector uav_pos = mob_uav->GetPosition();
+        //   // double rss = utils::get_rss(pos, model->backbone, log_loss);
+        //   a->SetPosition(pos);
+        //   b->SetPosition(uav_pos);
+        //   double rss = log_loss->CalcRxPower(txPowerDbm, a, b);
+        //   std::cout<<"id: "<<i<<" sta pos: "<<pos <<" uav: "<<uav_pos<<" dis: "<<CalculateDistance(pos,uav_pos)<<std::endl;
+        //   tot_rss += rss;
+        // }
+        // file_out <<Simulator::Now().GetSeconds()<<" , "<<tot_rss/sta_.GetN()<<std::endl;
+
+// TODO: uncomment this to get rss between neighboring UAVs
+// this should be after getting the neighborhoods of each robot.
 
         // get the RSS values of each uav nodes
         // NodeContainer bb_ = model->backbone;
