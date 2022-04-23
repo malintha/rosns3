@@ -12,11 +12,32 @@ Consider citing our work [1] if you find this code helpful for your publications
 
 ![Cover Image](https://github.com/malintha/rosns3_client/blob/master/cover.png?raw=true)
 
-- The ROS environment simulates the robots’ movements, and the NS-3 environment simulates the network events.
+- The ROS and NS-3 environments simulate the robots’ movements, and the network events, respectively.
 - ROSNS3 establishes the communication between the two environments using the UDP.
-- Currently, to calculate the routing paths as the ad-hoc network changes, we use Optimized Link State Routing (OLSR) algorithm.
+- Currently, to calculate the routing paths as the robots move, we use Optimized Link State Routing (OLSR) algorithm.
 - RSS and throughput features are planned for future work.
 
+## Building ROSNS3
+
+ROSNS3 relies on both the client and server modules. To avoid having to install bulky NS-3 software, we have provided a dockerized version of the ROSNS3 server. Unless you need to change the server code, there is no need to explicitly build the server code.
+- Download the docker image by running `docker pull malinthaf/rosns3-server:latest`.
+- Run `docker run -ti --privileged -p 28500:28500 --name rosns3-server malinthafe/rosns3-server` to run the server.
+- By default, the rosns3_server will run on the UDP port `28500`.
+
+### Build ROSNS3 Client
+
+- Simply run `catkin build rosns3_client`.
+
+## Running Examples
+
+Work in progess.
+
+<!-- ## Using ROSNS3 -->
+<!-- ## Changing the Server Side Code
+
+Any changes you will do the server side needs to be pushed into the docker container, and build inside to take effect. We have scripted this process, so there is no need to install NS3 or to do anything manually. Run the `build_server.sh` to push any changes you did to the NS-3 side code. -->
+
+## References
 
         [1] @ARTICLE{9739846,
             author={Fernando, Malintha and Senanayake, Ransalu and Swany, Martin},
