@@ -89,7 +89,7 @@ void Client::iteration(const ros::TimerEvent &e)
 
         for (int i = 0; i < params.n_robots; i++)
         {
-            simulator_utils::Waypoint state = nodes[i]->get_state();
+            rosns3_client::Waypoint state = nodes[i]->get_state();
             ROS_INFO_STREAM(i<<" "<<state.position.x<< " " << state.position.y << " " << state.position.z);
             auto pos = Vec3(state.position.x, state.position.y, state.position.z);
             auto id = i;

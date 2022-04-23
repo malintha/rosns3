@@ -29,13 +29,13 @@ double clientutils::get_avg_dist(std::vector<clientutils::Node*> nodes) {
     std::vector<double> dist;
     for (int i = 0; i < nodes.size(); i++)
     {
-        simulator_utils::Waypoint state_i = nodes[i]->get_state();
+        rosns3_client::Waypoint state_i = nodes[i]->get_state();
         Eigen::Vector3d pos_i(state_i.position.x, state_i.position.y, state_i.position.z);
         for (int j = 0; j < nodes.size(); j++)
         {
             if (j == i)
                 continue;
-            simulator_utils::Waypoint state_j = nodes[j]->get_state();
+            rosns3_client::Waypoint state_j = nodes[j]->get_state();
             Eigen::Vector3d pos_j(state_j.position.x, state_j.position.y, state_j.position.z);
             ;
             dist.push_back((pos_i - pos_j).norm());
