@@ -26,5 +26,6 @@ fi
 # Docker command to run the server with logging
 if [ $ENABLE_LOGGING -eq 1 ] ;
 then
+    echo "Running ROSNS3 with logging"
     eval "docker exec -i  rosns3-server bash -c 'cd /usr/ns3/ns-3.30 && NS_LOG='ROSNS3Server:ROSNS3Example:ROSNS3Model' ./waf --run 'rosns3-example --exp=$path_loss_exponent --ref_loss=$reference_loss --tx_power=$transmission_power --mean=$fading_mean --var=$fading_var''"
 fi
