@@ -24,7 +24,7 @@ ROSNS3 relies on both the client and server modules. To avoid having to install 
 - Run `./run_server.sh` to run the server.
 - By default, the rosns3_server will run on the UDP port `28500`.
 
-You can To change the propagation loss model parameters for wireless communiation inside the `run_server.sh` script. To stop the server run `stop_server.sh` script. This will kill the ROSNS3 server, stop the container, and remove the it from memory.
+To change the propagation loss model parameters for wireless communiation inside the `run_server.sh` script. To stop the server run `stop_server.sh` script. This will kill the ROSNS3 server, stop the container, and remove the it from memory.
 
 ### Build ROSNS3 Client
 
