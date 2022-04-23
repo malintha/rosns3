@@ -17,7 +17,8 @@ using namespace Eigen;
 
 class CoModel {
     public:
-        CoModel(std::vector<mobile_node_t> mobile_nodes, int backbone_nodes, int sim_time, bool use_real_time);
+        CoModel(std::vector<mobile_node_t> mobile_nodes, int backbone_nodes, int sim_time, bool use_real_time, 
+                loss_model_param_t loss_model_params);
         void run();
         std::vector<mobile_node_t> mobile_nodes;
         void report(std::ostream &);
@@ -35,6 +36,7 @@ class CoModel {
         NodeContainer aps;
         NetDeviceContainer devices;
         std::vector<mobile_node_t> ue_nodes;
+        loss_model_param_t loss_model_params;
 
         Ipv4InterfaceContainer interfaces_bb;
         Ipv4InterfaceContainer interfaces_sta;

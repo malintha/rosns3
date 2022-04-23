@@ -27,6 +27,14 @@ typedef struct mobile_node_t {
     int id;
 } mobile_node_t;
 
+typedef struct loss_model_param_t {
+    float path_loss_exponent;
+    float reference_loss;
+    float transmission_power;
+    float fading_mean;
+    float fading_var;
+} loss_model_param_t;
+
 typedef struct neighborhood_t {
     int id;
     std::vector<int> neighbors;

@@ -21,35 +21,55 @@ using namespace ns3;
 int main(int argc, char *argv[])
 {
 
-  // TODO: read all these values & Friis parameters from a YAML file.
+  // Setting all these values & Friis parameters from command line at the initialization.
   
-  uint32_t n_backbones = 5;
-  uint32_t isdynamic = 0;
-  uint32_t server_port = 28500;
+  float path_loss_exponent = 2.4;
+  float reference_loss = 46;
+  float transmission_power = 16.0206;
+  float fading_mean = 0;
+  float fading_var = 32;
+
+  const uint32_t server_port = 28500;
 
   CommandLine cmd;
 
-  cmd.AddValue ("backbones", "Number of backbone UAVs", n_backbones);
-  cmd.AddValue ("dynamic", "Is dynamic simulation", isdynamic);
-  cmd.AddValue ("server port", "UDP Server Port of ROSNS3", server_port);
-  
+  cmd.AddValue ("exp", "Path loss exponent", path_loss_exponent);
+  cmd.AddValue ("ref_loss", "Reference power loss", reference_loss);
+  cmd.AddValue ("tx_power", "Transmission power", transmission_power);
+  cmd.AddValue ("mean", "Fading mean", fading_mean);
+  cmd.AddValue ("var", "Fading variance", fading_var);
+
   cmd.Parse(argc, argv);
-  std::cout<<"UAVs: "<<n_backbones<<" Dynamic: "<<isdynamic<<" Server Port: "<<server_port<<std::endl;
   NS_LOG_COMPONENT_DEFINE("ROSNS3Example");
+
+  std::cout<<"Initializing rosns3-server on port: "<<server_port<<std::endl;
+  std::cout<<"Using Friss propagation loss model with:  \n" <<
+             "\t Path loss exponent: "<<path_loss_exponent <<"\n" <<
+             "\t Reference power loss: "<<reference_loss <<"dBmW \n"<< 
+             "\t Tranmission power: "<<transmission_power <<"dBmW \n"<<
+             "\t Fading mean: "<<fading_mean << "\n"<<
+             "\t Fading variance: "<<fading_var
+             <<std::endl;
+
+  loss_model_param_t loss_model_params {.path_loss_exponent = path_loss_exponent, 
+                                        . reference_loss = reference_loss,
+                                        .transmission_power = transmission_power,
+                                        .fading_mean = fading_mean,
+                                        .fading_var = fading_var};
 
   // create the propagation loss model for obtaining the RSS between UAV/UE nodes
   Ptr<PropagationLossModel> log_loss = CreateObject<LogDistancePropagationLossModel> ();
-  log_loss->SetAttribute("Exponent", ns3::DoubleValue(3));
-  log_loss->SetAttribute("ReferenceLoss", ns3::DoubleValue(46));
+  log_loss->SetAttribute("Exponent", ns3::DoubleValue(path_loss_exponent));
+  log_loss->SetAttribute("ReferenceLoss", ns3::DoubleValue(reference_loss));
   Ptr<PropagationLossModel> fading = CreateObject<RandomPropagationLossModel> ();
   const Ptr<NormalRandomVariable> nrv = CreateObject<NormalRandomVariable> ();
-  nrv->SetAttribute ("Mean", DoubleValue (0));
-  nrv->SetAttribute ("Variance", DoubleValue (0));
+  nrv->SetAttribute ("Mean", DoubleValue (fading_mean));
+  nrv->SetAttribute ("Variance", DoubleValue (fading_var));
   fading->SetAttribute("Variable", ns3::PointerValue(nrv));
   log_loss->SetNext(fading);
   Ptr<ConstantPositionMobilityModel> a = CreateObject<ConstantPositionMobilityModel> ();
   Ptr<ConstantPositionMobilityModel> b = CreateObject<ConstantPositionMobilityModel> ();
-  double txPowerDbm = +16.0206; // dBm
+  // double txPowerDbm = (double)transmission_power; // dBm
 
 // write the values to a text file
   
@@ -104,7 +124,7 @@ int main(int argc, char *argv[])
       // create the comm model and let the simulation run
       if (!sim_start)
       {
-        model = new CoModel(mobile_nodes, backbone_nodes, sim_time, use_real_time);
+        model = new CoModel(mobile_nodes, backbone_nodes, sim_time, use_real_time, loss_model_params);
         NS_LOG_INFO("Created CoModel");
 
         model->run();
@@ -164,7 +184,7 @@ int main(int argc, char *argv[])
         //   std::cout <<Simulator::Now().GetSeconds()<<" "<<" "<<i<<" "<<rss<<std::endl;
 
         // }
-        std::cout<<Simulator::Now().GetSeconds()<<std::endl;
+        // std::cout<<"Time: "<<Simulator::Now().GetSeconds()<<std::endl;
 
         NS_LOG_DEBUG("Getting updated routing tables at : " << Simulator::Now().GetSeconds());
 

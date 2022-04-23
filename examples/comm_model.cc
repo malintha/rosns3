@@ -19,7 +19,10 @@
 
 NS_LOG_COMPONENT_DEFINE("ROSNS3Model");
 
-CoModel::CoModel(std::vector<mobile_node_t> mobile_nodes, int backbone_nodes, int sim_time, bool use_real_time) : mobile_nodes(mobile_nodes), sim_time(sim_time), use_real_time(use_real_time)
+CoModel::CoModel(std::vector<mobile_node_t> mobile_nodes, int backbone_nodes, int sim_time, 
+                 bool use_real_time,
+                 loss_model_param_t loss_model_params) : mobile_nodes(mobile_nodes), 
+                 sim_time(sim_time), use_real_time(use_real_time), loss_model_params(loss_model_params)
 {
     pcap = true;
     print_routes = true;
@@ -287,11 +290,12 @@ void CoModel::create_backbone_devices()
     // SpectrumWifiPhyHelper wifiPhy = SpectrumWifiPhyHelper::Default();
     YansWifiChannelHelper wifiChannel = YansWifiChannelHelper::Default();
 
-    wifiChannel.AddPropagationLoss("ns3::LogDistancePropagationLossModel","Exponent", ns3::DoubleValue(2.4),
-                                   "ReferenceLoss", ns3::DoubleValue(-53));
+    wifiChannel.AddPropagationLoss("ns3::LogDistancePropagationLossModel","Exponent", 
+                                    ns3::DoubleValue(loss_model_params.path_loss_exponent),
+                                   "ReferenceLoss", ns3::DoubleValue(-1*loss_model_params.reference_loss));
     // const Ptr<NormalRandomVariable> nrv = CreateObject<NormalRandomVariable> ();
-    // nrv->SetAttribute ("Mean", DoubleValue (0));
-    // nrv->SetAttribute ("Variance", DoubleValue (32));
+    // nrv->SetAttribute ("Mean", DoubleValue (loss_model_params.fading_mean));
+    // nrv->SetAttribute ("Variance", DoubleValue (loss_model_params.fading_var));
     
     // wifiChannel.AddPropagationLoss("ns3::RandomPropagationLossModel", "Variable", ns3::PointerValue(nrv));
 
@@ -301,7 +305,7 @@ void CoModel::create_backbone_devices()
     wifiChannel.SetPropagationDelay("ns3::ConstantSpeedPropagationDelayModel");
     wifiPhy.SetChannel(wifiChannel.Create());
     
-    /**
+    /*
      * https://www.nsnam.org/docs/release/3.21/doxygen/classns3_1_1_constant_rate_wifi_manager.html
      * 
      * ConstantRateWifiManager: This class uses always the same transmission rate for 
