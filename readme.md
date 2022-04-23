@@ -21,7 +21,7 @@ Consider citing our work [1] if you find this code helpful for your publications
 
 ROSNS3 relies on both the client and server modules. To avoid having to install bulky NS-3 software, we have provided a dockerized version of the ROSNS3 server. Unless you need to change the server code, there is no need to explicitly build the server code.
 - Download the docker image by running `docker pull malinthaf/rosns3-server:latest`.
-- Run `docker run -ti --privileged -p 28500:28500 --name rosns3-server malinthafe/rosns3-server` to run the server.
+- Run `docker run -ti --privileged -p 28500:28500 --name rosns3-server malinthaf/rosns3-server` to run the server.
 - By default, the rosns3_server will run on the UDP port `28500`.
 
 ### Build ROSNS3 Client
