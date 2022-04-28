@@ -50,19 +50,19 @@ double clientutils::get_avg_dist(std::vector<clientutils::Node*> nodes) {
     return (tot_dis / dist.size());
 }
 
-void clientutils::write_to_file(std::vector<int> hops, double avg_dis) {
-    std::ofstream outss;
-    std::stringstream ss;
-    ss << "/home/malintha/ns3/ns-allinone-3.30/ns-3.30/src/rosns3/scripts/hops.txt";
+// void clientutils::write_to_file(std::vector<int> hops, double avg_dis) {
+//     std::ofstream outss;
+//     std::stringstream ss;
+//     ss << "/home/malintha/ns3/ns-allinone-3.30/ns-3.30/src/rosns3/scripts/hops.txt";
 
-    outss.open(ss.str(), std::ios_base::app);
-    outss << std::endl << avg_dis << " ";
-    for (int i = 0; i < hops.size(); i++) {
-        outss << " " << hops[i];
-    }
+//     outss.open(ss.str(), std::ios_base::app);
+//     outss << std::endl << avg_dis << " ";
+//     for (int i = 0; i < hops.size(); i++) {
+//         outss << " " << hops[i];
+//     }
 
-    outss.close();
-}
+//     outss.close();
+// }
 
 clientutils::Node::Node(int id, ros::NodeHandle n, bool backbone):Drone(id, n) {
     // this->pub_frequency = pub_freq;

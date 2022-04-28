@@ -17,12 +17,16 @@ Consider citing our work [1] if you find this code helpful for your publications
 - Currently, to calculate the routing paths as the robots move, we use Optimized Link State Routing (OLSR) algorithm.
 - RSS and throughput features are planned for future work.
 
-## Building ROSNS3
+## Run ROSNS3
+
+### Clone ROSNS3
+
+Clone ROSNS3 to your `catkin_ws/src`.
+
+`git clone --recursive git@github.com:malintha/rosns3.git`
 
 ROSNS3 relies on both the client and server modules. To avoid having to install bulky NS-3 software, we have provided a dockerized version of the ROSNS3 server. Unless you need to change the server code, there is no need to explicitly build it.
 - Download the docker image by running `docker pull malinthaf/rosns3-server:latest`.
-- Run `./run_server.sh` to run the server.
-- By default, the rosns3_server will run on the UDP port `28500`.
 
 To change the propagation loss model parameters for wireless communiation inside the `run_server.sh` script. To stop the server run `stop_server.sh` script. This will kill the ROSNS3 server, stop the container, and remove the it from memory.
 
@@ -30,14 +34,18 @@ To change the propagation loss model parameters for wireless communiation inside
 
 - Simply run `catkin build rosns3_client`.
 
-## Running Examples
+### Run
 
-Work in progess.
+- Run `./run_server.sh` to run the server.
+- By default, the rosns3_server will run on the UDP port `28500`.
+- Run the client with command `roslaunch rosns3_client rosns3_client.launch n_backbone:=5` to simulate the adhoc wireless communication in a robot swarm of 5 nodes.
 
-<!-- ## Using ROSNS3 -->
-<!-- ## Changing the Server Side Code
+### Usage
 
-Any changes you will do the server side needs to be pushed into the docker container, and build inside to take effect. We have scripted this process, so there is no need to install NS3 or to do anything manually. Run the `build_server.sh` to push any changes you did to the NS-3 side code. -->
+ - ROSNS3 uses `rostopics` to obtain the swarm's physical state from the ROS-enabled physics simulator. More specifically, in your simulation platform each robot can publish its state to the topic `/robot_<robot_id>/current_state`. For now you can use the message type `rosns3_client/Waypoint` for the communication. In future releases we plan to change this to a more generic ros_std type.
+ - Internally, the client aggregates the robots' states periodically and communicates it to the server using a flatbuffers message type.
+ - The server calculates the current communication topology of the swarm using the Friis wireless channel model and OLSR routing, and publishes it to the topic `/rosns3_client/routing_table`.
+ - Each entry in the routing table corresponds to the adjacency matrix, and specifies the number of communication hops between the two given robots in the swarm.
 
 ## References
 
