@@ -21,14 +21,14 @@ Consider citing our work [1] if you find this code helpful for your publications
 
 ### Clone ROSNS3
 
-Clone ROSNS3 to your `catkin_ws/src`.
+Clone ROSNS3 to your `catkin_ws/src` using the command below.
 
-`git clone --recursive git@github.com:malintha/rosns3.git`
+ - `git clone --recursive git@github.com:malintha/rosns3.git`
 
 ROSNS3 relies on both the client and server modules. To avoid having to install bulky NS-3 software, we have provided a dockerized version of the ROSNS3 server. Unless you need to change the server code, there is no need to explicitly build it.
 - Download the docker image by running `docker pull malinthaf/rosns3-server:latest`.
 
-To change the propagation loss model parameters for wireless communiation inside the `run_server.sh` script. To stop the server run `stop_server.sh` script. This will kill the ROSNS3 server, stop the container, and remove the it from memory.
+You can change the propagation loss model parameters for wireless communiation inside the `run_server.sh` script. These changes will subsequently applied to the server running inside the docker container.
 
 ### Build ROSNS3 Client
 
@@ -39,6 +39,7 @@ To change the propagation loss model parameters for wireless communiation inside
 - Run `./run_server.sh` to run the server.
 - By default, the rosns3_server will run on the UDP port `28500`.
 - Run the client with command `roslaunch rosns3_client rosns3_client.launch n_backbone:=5` to simulate the adhoc wireless communication in a robot swarm of 5 nodes.
+- To stop the server run `stop_server.sh` script. This will kill the ROSNS3 server, stop the docker container, and remove the it from memory.
 
 ### Usage
 
