@@ -1,10 +1,10 @@
 #include "iostream"
 #include "ros/ros.h"
-#include "Drone.h"
+#include "Robot.h"
 
 namespace clientutils
 {    
-    class Node : public Drone
+    class Node : public Robot
     {
         public:
             Node(int id, ros::NodeHandle n, bool backbone);

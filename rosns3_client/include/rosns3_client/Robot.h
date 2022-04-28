@@ -1,8 +1,8 @@
 //
 // Created by malintha on 10/14/20.
 //
-#ifndef ROSNS3_DRONE_H
-#define ROSNS3_DRONE_H
+#ifndef ROSNS3_ROBOT_H
+#define ROSNS3_ROBOT_H
 
 //#include <iostream>
 #include "ros/ros.h"
@@ -11,7 +11,7 @@
 
 //using namespace std;
 
-class Drone {
+class Robot {
     ros::Subscriber state_sub;
     ros::NodeHandle nh;
     void state_cb(const rosns3_client::WaypointConstPtr& wp);
@@ -19,7 +19,7 @@ class Drone {
 public:
     int id;
     rosns3_client::Waypoint state;
-    Drone(int id, const ros::NodeHandle &n);
+    Robot(int id, const ros::NodeHandle &n);
     rosns3_client::Waypoint get_state() const;
 
 

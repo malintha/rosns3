@@ -50,7 +50,7 @@ add_executable(${PROJECT_NAME}
 src/rosns3_client.cpp
 src/utils.cpp
 src/client.cpp
-src/Drone.cpp
+src/Robot.cpp
 )
 
 target_link_libraries(

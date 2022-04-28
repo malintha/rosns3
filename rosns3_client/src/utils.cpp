@@ -23,7 +23,7 @@ clientutils::params_t clientutils::load_params(ros::NodeHandle nh) {
     return params;
 };
 
-// clientutils::Node::Node(int id, ros::NodeHandle n):Drone(id, n) {
+// clientutils::Node::Node(int id, ros::NodeHandle n):Robot(id, n) {
 // };
 double clientutils::get_avg_dist(std::vector<clientutils::Node*> nodes) {
     std::vector<double> dist;
@@ -64,7 +64,7 @@ double clientutils::get_avg_dist(std::vector<clientutils::Node*> nodes) {
 //     outss.close();
 // }
 
-clientutils::Node::Node(int id, ros::NodeHandle n, bool backbone):Drone(id, n) {
+clientutils::Node::Node(int id, ros::NodeHandle n, bool backbone): Robot(id, n) {
     // this->pub_frequency = pub_freq;
     this->backbone = backbone;
     // std::stringstream ss;
