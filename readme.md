@@ -25,7 +25,7 @@ Clone ROSNS3 to your `catkin_ws/src` using the command below.
 
  - `git clone --recursive git@github.com:malintha/rosns3.git`
 
-ROSNS3 relies on both the client and server modules. To avoid having to install bulky NS-3 software, we have provided a dockerized version of the ROSNS3 server. Unless you need to change the server code, there is no need to explicitly build it.
+ROSNS3 relies on both the client and server modules. To avoid having to install bulky NS-3 software, we have provided a dockerized version of the ROSNS3 server. Unless you need to change the server code, which resides at `rosns3_server` there is no need to explicitly build it.
 - Download the docker image by running `docker pull malinthaf/rosns3-server:latest`.
 
 You can change the propagation loss model parameters for wireless communiation inside the `run_server.sh` script. These changes will subsequently applied to the server running inside the docker container.
